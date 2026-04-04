@@ -12,21 +12,97 @@ let MY_USER_ID = null;
 let selectedTargetId = null; 
 let selectedTargetName = "";
 
+// STATE BARU UNTUK LEVELING
+let myTotalGiftSent = 0; 
+let myLevel = 1;
+
 document.addEventListener('DOMContentLoaded', () => {
     const titleEl = document.querySelector('.room-title');
     if (titleEl) titleEl.innerText = CURRENT_ROOM_NAME.toUpperCase();
 });
 
 // --- UI HELPERS & BADGES ---
+function getLevelStyle(level) {
+    const lvl = parseInt(level) || 1;
+    if (lvl >= 5) return { color: "#FF0055", textShadow: "0 0 8px rgba(255, 0, 85, 0.8)", title: "LEGEND" };
+    if (lvl === 4) return { color: "#00E5FF", textShadow: "0 0 5px rgba(0, 229, 255, 0.7)", title: "SULTAN" };
+    if (lvl === 3) return { color: "#BB86FC", textShadow: "none", title: "PATRON" };
+    if (lvl === 2) return { color: "#FFD700", textShadow: "none", title: "SUPPORTER" };
+    return { color: "inherit", textShadow: "none", title: "" };
+}
+
+function getLevelBadgeHTML(level) {
+    const style = getLevelStyle(level);
+    if (!style.title) return ""; 
+    return `<span style="font-size: 9px; font-weight: 800; background: ${style.color}; color: #000; padding: 2px 4px; border-radius: 3px; margin-left: 5px; vertical-align: middle;">${style.title}</span>`;
+}
+
 function getUserBadge(role) {
   if (!role) return "";
   let badge = "";
   const r = role.toLowerCase();
-  if (r === "admin") badge += `<span class="admin-badge" style="background: #ff4757; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-left: 5px; font-weight: bold; height: 16px; display: inline-flex; align-items: center; vertical-align: middle;">🛡 Dev</span>`;
+  if (r === "admin") badge += `<span class="admin-badge" style="background: #ff4757; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-left: 5px; font-weight: bold; height: 16px; display: inline-flex; align-items: center; vertical-align: middle;">DEV</span>`;
   if (r === "verified") badge += `<span class="verified-badge" style="margin-left:5px; vertical-align:middle;"><svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   const crowBadges = { crown1: "asets/png/crown1.png", crown2: "asets/png/crown2.png", crown3: "asets/png/crown3.png" };
   if (crowBadges[r]) badge += `<img src="${crowBadges[r]}" style="width:18px;height:18px;margin-left:5px;vertical-align:middle;object-fit:contain;display:inline-block;" alt="${r}">`;
   return badge;
+}
+
+// FUNGSI BARU: Efek Masuk Room (Khusus SULTAN & LEGEND) - SLIDE DARI SAMPING & TANPA CONFETTI
+function playVIPEntrance(username, level) {
+    if (level < 4) return; // Hanya jalan untuk Level 4 ke atas
+
+    let overlay = document.getElementById('vip-entrance-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'vip-entrance-overlay';
+        // UPDATE POSISI: top diubah dari 15% menjadi 35% agar lebih ke tengah layar
+        overlay.style.cssText = "position:fixed; top: 35%; left: 50%; transform: translateX(-150vw); z-index: 1000000; display: none; text-align: center; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); pointer-events: none; width: 90%; max-width: 400px;";
+        document.body.appendChild(overlay);
+    }
+    
+    let bgStyle = "";
+    let textHTML = "";
+
+    // Desain Khusus SULTAN (Level 4)
+    if (level === 4) { 
+        bgStyle = "background: linear-gradient(90deg, #00d2ff, #3a7bd5); box-shadow: 0 0 20px rgba(0, 210, 255, 0.8); border: 2px solid #00E5FF;";
+        textHTML = `<span style="color: #fff;">SULTAN</span> <b style="color:#ffff00">${username.toUpperCase()}</b> <span style="color: #fff;">MEMASUKI ROOM</span>`;
+    } 
+    // Desain Khusus LEGEND (Level 5)
+    else if (level >= 5) { 
+        bgStyle = "background: linear-gradient(90deg, #ff0055, #ffaa00); box-shadow: 0 0 25px rgba(255, 0, 85, 0.8); border: 2px solid #fff;";
+        textHTML = `<span style="color: #ffff00;">${username.toUpperCase()}</span> (LEGEND) TIBA`;
+    }
+
+    overlay.innerHTML = `
+        <div style="${bgStyle} padding: 12px 20px; border-radius: 50px;">
+            <span style="font-size: 13px; font-weight: 900; text-shadow: 0 2px 5px rgba(0,0,0,0.5); letter-spacing: 0.5px;">
+                ${textHTML}
+            </span>
+        </div>
+    `;
+    
+    // Munculkan div-nya (masih di luar layar kiri)
+    overlay.style.display = 'block';
+    
+    // Animasi MASUK: Melesat ke tengah
+    setTimeout(() => { 
+        overlay.style.transform = 'translateX(-50%)'; 
+    }, 50);
+
+    // KODE CONFETTI SUDAH DIHAPUS TOTAL DARI SINI ❌
+
+    // Animasi KELUAR: Melesat ke kanan layar setelah 4 detik
+    setTimeout(() => {
+        overlay.style.transform = 'translateX(150vw)'; 
+        
+        // Reset posisi kembali ke kiri setelah selesai keluar
+        setTimeout(() => { 
+            overlay.style.display = 'none'; 
+            overlay.style.transform = 'translateX(-150vw)'; 
+        }, 600);
+    }, 4000);
 }
 
 // 2. KONFIGURASI SUPABASE
@@ -36,11 +112,12 @@ const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
 async function getCachedProfile(userId) {
   const key = `hh_profile_${userId}`;
-  const cached = sessionStorage.getItem(key);
-  if (cached) return JSON.parse(cached);
-  const { data } = await sb.from('profiles').select('username, avatar_url, role, coins').eq('id', userId).single();
-  if (data) sessionStorage.setItem(key, JSON.stringify(data));
-  return data;
+  const { data, error } = await sb.from('profiles').select('username, avatar_url, role, coins, total_gift_sent, level').eq('id', userId).single();
+  if (data) {
+      sessionStorage.setItem(key, JSON.stringify(data));
+      return data;
+  }
+  return null;
 }
 
 // 3. KONFIGURASI LIVEKIT
@@ -54,9 +131,8 @@ async function initApp() {
     listenRealtime(); 
 }
 
-// 🔥 FIX AUTOPLAY ERROR & EFEK NGOMONG (GLOW) 🔥
 async function initLiveKit() {
-    if (typeof LivekitClient === 'undefined') return console.error("❌ SDK LiveKit Hilang!");
+    if (typeof LivekitClient === 'undefined') return console.error("SDK LiveKit Hilang!");
     try {
         const response = await fetch(`${supabaseUrl}/functions/v1/get-livekit-token`, {
             method: 'POST',
@@ -66,25 +142,15 @@ async function initLiveKit() {
         const data = await response.json();
         room = new LivekitClient.Room({ adaptiveStream: true, dynacast: true });
         
-        // --- FIX EFEK NGOMONG DI SINI ---
         room.on(LivekitClient.RoomEvent.ActiveSpeakersChanged, (speakers) => {
-            // Hapus semua efek speaking dulu
             document.querySelectorAll('.avatar').forEach(el => el.classList.remove('speaking'));
-            
-            // Tambahin efek speaking ke orang yang lagi ngomong
             speakers.forEach((s) => {
                 let el = document.querySelector(`[data-user-id="${s.identity}"]`);
-                
-                // Fallback sakti khusus untuk nangkep suara diri sendiri (Local)
-                if (!el && s.isLocal) {
-                    el = document.querySelector(`[data-user-id="${MY_USER_ID}"]`);
-                }
-                
+                if (!el && s.isLocal) el = document.querySelector(`[data-user-id="${MY_USER_ID}"]`);
                 if (el) el.classList.add('speaking');
             });
         });
 
-        // Tangkap audio dan handle Autoplay Block
         room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
             if (track.kind === "audio") {
                 const element = track.attach();
@@ -110,7 +176,7 @@ async function initLiveKit() {
 // 4. LOGIKA PANGGUNG
 async function fetchStage() {
     if (!CURRENT_ROOM_ID || CURRENT_ROOM_ID === "null") return;
-    let { data: slots } = await sb.from('room_slots').select(`slot_index, profile_id, profiles (username, avatar_url, role, mic_off)`).eq('room_id', CURRENT_ROOM_ID).order('slot_index', { ascending: true });
+    let { data: slots } = await sb.from('room_slots').select(`slot_index, profile_id, profiles (username, avatar_url, role, mic_off, level)`).eq('room_id', CURRENT_ROOM_ID).order('slot_index', { ascending: true });
     
     if (!slots || slots.length === 0) {
         const newSlots = Array.from({length: 6}, (_, i) => ({ room_id: CURRENT_ROOM_ID, slot_index: i, profile_id: null }));
@@ -129,7 +195,11 @@ function renderStage(slots) {
         const isMe = slot.profile_id === MY_USER_ID;
         const item = document.createElement('div');
         item.className = 'speaker-item';
+        
         if (user) {
+            const lvlStyle = getLevelStyle(user.level || 1);
+            const lvlBadge = getLevelBadgeHTML(user.level || 1);
+            
             item.innerHTML = `
                 <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${slot.profile_id}" onclick="${isMe ? `turunMic(${i})` : `toggleKickBtn(this, ${IS_OWNER && !isMe})`}">
                     <img src="${user.avatar_url || 'asets/png/profile.png'}">
@@ -138,7 +208,7 @@ function renderStage(slots) {
                     </div>
                     ${(IS_OWNER && !isMe) ? `<div class="kick-btn-wrapper" style="display:none;"><div class="kick-btn" onclick="event.stopPropagation(); kickUser('${slot.profile_id}', '${user.username}')"><span class="material-icons">close</span></div></div>` : ''}
                 </div>
-                <span class="name-label">${user.username} ${getUserBadge(user.role)}</span>`;
+                <span class="name-label" style="color: ${lvlStyle.color}; text-shadow: ${lvlStyle.textShadow};">${user.username}${lvlBadge}${getUserBadge(user.role)}</span>`;
         } else {
             item.innerHTML = `<div class="avatar" onclick="naikKeStage(${i})"><span class="material-icons" style="color: #444; font-size: 30px;">add</span></div><span class="name-label">KOSONG</span>`;
         }
@@ -168,11 +238,7 @@ function playGiftAnimation(giftId) {
     
     overlay.style.display = 'flex';
     setTimeout(() => { overlay.style.opacity = '1'; }, 50);
-
-    setTimeout(() => {
-        overlay.style.opacity = '0';
-        setTimeout(() => { overlay.style.display = 'none'; }, 500);
-    }, 4000); 
+    setTimeout(() => { overlay.style.opacity = '0'; setTimeout(() => { overlay.style.display = 'none'; }, 500); }, 4000); 
 }
 
 // 6. REALTIME LISTENER
@@ -185,17 +251,20 @@ function listenRealtime() {
         if (countEl) countEl.innerText = Object.keys(roomChannel.presenceState()).length;
     })
     .on('presence', { event: 'leave' }, async ({ leftPresences }) => {
-        for (const p of leftPresences) {
-            await sb.from('room_slots').update({ profile_id: null }).match({ profile_id: p.key });
-        }
+        for (const p of leftPresences) { await sb.from('room_slots').update({ profile_id: null }).match({ profile_id: p.key }); }
     })
     .on('presence', { event: 'join' }, ({ newPresences }) => {
         const chatBox = document.getElementById('chat-box');
         newPresences.forEach(p => {
             if (p.key !== MY_USER_ID) { 
                 const div = document.createElement('div'); div.className = 'msg system';
-                div.innerHTML = `<span style="color: #00ff88;">👋 <b>${p.username}</b> bergabung!</span>`;
+                div.innerHTML = `<span style="color: #00ff88;"><b>${p.username}</b> bergabung!</span>`;
                 chatBox?.appendChild(div); if(chatBox) chatBox.scrollTop = chatBox.scrollHeight; 
+                
+                // MUNCULKAN EFEK JIKA YANG MASUK LEVEL 4 (SULTAN) ATAU 5 (LEGEND)
+                if (p.level >= 4) {
+                    playVIPEntrance(p.username, p.level);
+                }
             }
         });
     })
@@ -208,36 +277,47 @@ function listenRealtime() {
         const isSystem = p.new.username.startsWith("SISTEM");
         const isDariSaya = isGift && p.new.text.includes(myUsername);
 
-        if (isDariSaya) return;
+        if (isDariSaya) return; 
 
         const div = document.createElement('div'); 
         div.className = isSystem ? 'msg system' : 'msg';
 
         if (isGift) {
             div.innerHTML = `<span style="color: #f1c40f; font-weight: bold;">${p.new.text}</span>`;
+            if (typeof confetti !== 'undefined') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            playGiftAnimation(parseInt(p.new.role) || 1);
         } else {
-            div.innerHTML = isSystem ? `<span>${p.new.text}</span>` : `<span class="user">${p.new.username}${getUserBadge(p.new.role)}:</span> ${p.new.text}`;
+            const lvlStyle = getLevelStyle(p.new.level || 1);
+            const lvlBadge = getLevelBadgeHTML(p.new.level || 1);
+            div.innerHTML = isSystem ? `<span>${p.new.text}</span>` : `<span class="user" style="color: ${lvlStyle.color}; text-shadow: ${lvlStyle.textShadow};">${p.new.username}${lvlBadge}${getUserBadge(p.new.role)}:</span> <span style="color: #fff;">${p.new.text}</span>`;
         }
         
         chatBox.appendChild(div); 
         chatBox.scrollTop = chatBox.scrollHeight;
-
-        if (isGift) {
-            if (typeof confetti !== 'undefined') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-            playGiftAnimation(parseInt(p.new.role) || 1);
-        }
     })
     .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') await roomChannel.track({ online_at: new Date().toISOString(), username: myUsername });
+        if (status === 'SUBSCRIBED') await roomChannel.track({ online_at: new Date().toISOString(), username: myUsername, level: myLevel });
     });
 }
 
-// 7. SEMUA FUNGSI UI & INTERAKSI (YANG TADI SEMPET ILANG)
+// 7. UI & INTERAKSI
 async function kirimKomentar() {
-    const text = document.getElementById('chat-input').value;
-    if (!text) return;
-    await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: myUsername, text: text, role: myRole }]);
-    document.getElementById('chat-input').value = "";
+    try {
+        const inputEl = document.getElementById('chat-input');
+        const text = inputEl.value.trim();
+        if (!text) return; 
+        
+        const { error } = await sb.from('room_messages').insert([{ 
+            room_id: CURRENT_ROOM_ID, 
+            username: myUsername, 
+            text: text, 
+            role: myRole,
+            level: myLevel 
+        }]);
+        
+        if (error) return alert("Gagal kirim pesan!");
+        inputEl.value = ""; 
+    } catch (err) { console.error(err); }
 }
 
 function toggleSidebar() {
@@ -246,7 +326,7 @@ function toggleSidebar() {
 }
 
 async function toggleMicSidebar() {
-    if (!room || !room.localParticipant) return alert("Lu belum naik panggung bro!");
+    if (!room || !room.localParticipant) return alert("Belum naik panggung!");
     try {
         const isMicOn = room.localParticipant.isMicrophoneEnabled;
         const newStatus = !isMicOn; 
@@ -277,7 +357,10 @@ async function toggleMicSidebar() {
 function toggleGiftDrawer() {
     document.getElementById('gift-drawer').classList.toggle('open');
     document.getElementById('drawer-overlay').classList.toggle('show');
-    if (document.getElementById('gift-drawer').classList.contains('open')) updateGiftTargets();
+    if (document.getElementById('gift-drawer').classList.contains('open')) {
+        updateGiftTargets();
+        updateLevelProgressUI(); 
+    }
 }
 
 async function updateGiftTargets() {
@@ -312,7 +395,7 @@ async function naikKeStage(index) {
     if (!MY_USER_ID) return alert("Login dulu!");
     try {
         const { data: checkSlot } = await sb.from('room_slots').select('profile_id').match({ room_id: CURRENT_ROOM_ID, slot_index: index }).single();
-        if (checkSlot && checkSlot.profile_id !== null) return alert("Kursi udah ada yang nempatin bro!");
+        if (checkSlot && checkSlot.profile_id !== null) return alert("Kursi sudah ada yang menempati!");
         await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID);
         await new Promise(r => setTimeout(r, 300));
         await sb.from('room_slots').update({ profile_id: MY_USER_ID }).match({ room_id: CURRENT_ROOM_ID, slot_index: index });
@@ -334,7 +417,7 @@ async function prosesTurunMic() {
 async function kickUser(targetId, targetName) {
     if (!confirm(`Kick ${targetName}?`)) return;
     await sb.from('room_slots').update({ profile_id: null }).match({ room_id: CURRENT_ROOM_ID, profile_id: targetId });
-    await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `🚫 ${targetName} ditendang.` }]);
+    await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `${targetName} dikeluarkan.` }]);
 }
 
 async function keluarRoom() {
@@ -353,9 +436,7 @@ async function openRoomSetting() {
     document.getElementById('setting-modal').style.display = 'flex';
 }
 
-function closeRoomSetting() { 
-    document.getElementById('setting-modal').style.display = 'none'; 
-}
+function closeRoomSetting() { document.getElementById('setting-modal').style.display = 'none'; }
 
 async function saveRoomSetting() {
     const newName = document.getElementById('edit-room-name').value;
@@ -363,14 +444,60 @@ async function saveRoomSetting() {
     if (!newName) return alert("Nama room tidak boleh kosong!");
     try {
         await sb.from('rooms').update({ name: newName }).eq('id', CURRENT_ROOM_ID);
-        if (sysMsg) await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `📢 PENGUMUMAN: ${sysMsg}`, role: "admin" }]);
+        if (sysMsg) await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `PENGUMUMAN: ${sysMsg}`, role: "admin" }]);
         const url = new URL(window.location); url.searchParams.set('name', newName); window.history.pushState({}, '', url); 
         document.querySelector('.room-title').innerText = newName.toUpperCase();
         closeRoomSetting();
     } catch (e) { alert("Gagal simpan: " + e.message); }
 }
 
-// 8. LOGIKA SEND GIFT (LANGSUNG MUNCUL TANPA DELAY)
+// ===== FUNGSI PROGRESS LEVEL UI =====
+function updateLevelProgressUI() {
+    const container = document.getElementById('level-progress-container');
+    if (!container) return; 
+
+    let prevTarget = 0, currentTarget = 0, nextName = "", currentName = "";
+
+    if (myLevel === 1) { prevTarget = 0; currentTarget = 1000; nextName = "SUPPORTER"; currentName = "NEWBIE"; }
+    else if (myLevel === 2) { prevTarget = 1000; currentTarget = 5000; nextName = "PATRON"; currentName = "SUPPORTER"; }
+    else if (myLevel === 3) { prevTarget = 5000; currentTarget = 20000; nextName = "SULTAN"; currentName = "PATRON"; }
+    else if (myLevel === 4) { prevTarget = 20000; currentTarget = 50000; nextName = "LEGEND"; currentName = "SULTAN"; }
+    else {
+        container.innerHTML = `<div style="text-align:center; font-size: 13px; color: #FF0055; font-weight: bold; margin: 15px 0;">LEVEL MAX (LEGEND)</div>`;
+        return;
+    }
+
+    let needed = currentTarget - myTotalGiftSent;
+    let progressInTier = myTotalGiftSent - prevTarget;
+    let tierRange = currentTarget - prevTarget;
+    let percent = (progressInTier / tierRange) * 100;
+    
+    if (percent > 100) percent = 100;
+    if (percent < 0) percent = 0;
+
+    container.innerHTML = `
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 6px; padding: 0 5px;">
+            <span>LVL ${myLevel} (${currentName})</span>
+            <span>Butuh <b style="color:#f1c40f">${needed} koin</b> lagi</span>
+        </div>
+        <div style="width: 100%; height: 6px; background: #333; border-radius: 4px; overflow: hidden;">
+            <div style="width: ${percent}%; height: 100%; background: linear-gradient(90deg, #00ff88, #00d2ff); transition: width 0.5s ease-out;"></div>
+        </div>
+    `;
+}
+
+// ===== LOGIKA LEVELING =====
+const LEVEL_THRESHOLDS = { 1: 0, 2: 1000, 3: 5000, 4: 20000, 5: 50000 };
+
+function checkLevelUp(totalGiftSent) {
+    if (totalGiftSent >= LEVEL_THRESHOLDS[5]) return { level: 5, name: "LEGEND", color: "#FF0055" };
+    if (totalGiftSent >= LEVEL_THRESHOLDS[4]) return { level: 4, name: "SULTAN", color: "#00E5FF" };
+    if (totalGiftSent >= LEVEL_THRESHOLDS[3]) return { level: 3, name: "PATRON", color: "#BB86FC" };
+    if (totalGiftSent >= LEVEL_THRESHOLDS[2]) return { level: 2, name: "SUPPORTER", color: "#FFD700" };
+    return { level: 1, name: "NEWBIE", color: "#FFFFFF" };
+}
+
+// 8. LOGIKA SEND GIFT 
 async function sendGift(giftName, harga, giftId) {
     if (!selectedTargetId) return alert("Pilih target!");
     const coinDisplay = document.getElementById('user-coins');
@@ -378,14 +505,41 @@ async function sendGift(giftName, harga, giftId) {
     if (saldoSkrg < harga) return alert("Koin kurang!");
     
     try {
-        await sb.from('profiles').update({ coins: saldoSkrg - harga }).eq('id', MY_USER_ID);
         const { data: tData } = await sb.from('profiles').select('coins').eq('id', selectedTargetId).single();
         await sb.from('profiles').update({ coins: (tData.coins || 0) + harga }).eq('id', selectedTargetId);
+        
+        let newTotalGift = myTotalGiftSent + harga;
+        let levelData = checkLevelUp(newTotalGift);
+        let oldLevel = myLevel;
+        
+        const { error: updateErr } = await sb.from('profiles').update({ 
+            coins: saldoSkrg - harga,
+            total_gift_sent: newTotalGift,
+            level: levelData.level
+        }).eq('id', MY_USER_ID);
+
+        if (updateErr) return alert("Error database!");
+        
         coinDisplay.innerText = (saldoSkrg - harga).toLocaleString();
+        myTotalGiftSent = newTotalGift; 
+        myLevel = levelData.level;
+        sessionStorage.removeItem(`hh_profile_${MY_USER_ID}`); 
+        
+        updateLevelProgressUI(); 
+        toggleGiftDrawer();      
         
         const teksPengumuman = ` ${myUsername} mengirim ${giftName} ke ${selectedTargetName}!`;
         await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM_GIFT", text: teksPengumuman, role: giftId.toString() }]);
-        toggleGiftDrawer();
+
+        if (myLevel > oldLevel) {
+            const teksLevelUp = `SELAMAT! ${myUsername} telah naik ke Level ${myLevel} (${levelData.name})!`;
+            await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: teksLevelUp, role: "admin" }]);
+            
+            // MAIN KAN EFEK LANGSUNG KALAU TEMBUS LEVEL 4 ATAU 5 SAAT NGEGIFT
+            if (myLevel >= 4) {
+                playVIPEntrance(myUsername, myLevel);
+            }
+        }
 
         if (typeof confetti !== 'undefined') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
         playGiftAnimation(giftId);
@@ -398,7 +552,7 @@ async function sendGift(giftName, harga, giftId) {
             chatBox.appendChild(div); 
             chatBox.scrollTop = chatBox.scrollHeight;
         }
-    } catch (e) { alert(e.message); }
+    } catch (e) { alert("Error sistem gift: " + e.message); }
 }
 
 function fixMobileHeight() { document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`); }
@@ -409,14 +563,26 @@ async function checkUser() {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { window.location.href = 'index.html'; return false; }
     MY_USER_ID = session.user.id;
+    
     const myProfile = await getCachedProfile(MY_USER_ID);
     const { data: roomData } = await sb.from('rooms').select('owner_id, is_active').eq('id', CURRENT_ROOM_ID).maybeSingle();
+    
     if (myProfile) {
-        myUsername = myProfile.username; myRole = myProfile.role || "user";
+        myUsername = myProfile.username; 
+        myRole = myProfile.role || "user";
+        myTotalGiftSent = myProfile.total_gift_sent || 0; 
+        myLevel = myProfile.level || 1;
+
         if (document.getElementById('sidebar-username')) document.getElementById('sidebar-username').innerText = myUsername;
         if (document.getElementById('sidebar-avatar')) document.getElementById('sidebar-avatar').src = myProfile.avatar_url || 'asets/png/profile.png';
         if (document.getElementById('user-coins')) document.getElementById('user-coins').innerText = (myProfile.coins || 0).toLocaleString();
+        
+        // MUNCULKAN EFEK UNTUK DIRI SENDIRI SAAT PERTAMA KALI MASUK (JIKA SUDAH LEVEL 4 ATAU 5)
+        if (myLevel >= 4) {
+            setTimeout(() => playVIPEntrance(myUsername, myLevel), 1500); 
+        }
     }
+    
     if (roomData) {
         IS_OWNER = roomData.owner_id === MY_USER_ID;
         if (IS_OWNER) {
@@ -431,7 +597,7 @@ async function checkUser() {
     return true; 
 }
 
-// 10. EXPOSE TO WINDOW (WAJIB BIAR HTML BISA MANGGIL)
+// 10. EXPOSE TO WINDOW
 window.naikKeStage = naikKeStage;
 window.turunMic = turunMic;
 window.prosesTurunMic = prosesTurunMic;

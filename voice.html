@@ -124,13 +124,13 @@ Jangan gunakan kata kasar, hinaan, atau bullying dalam bentuk apa pun. Selalu ja
     <div class="drawer-header">
         <button class="close-drawer-btn" onclick="toggleGiftDrawer()">✕</button>
         <span class="drawer-title">KIRIM HADIAH</span>
-<div class="coin-panel">
-    <img src="asets/svg/koin.svg" alt="Koin" style="width: 18px; height: 18px; object-fit: contain;">
-    <span id="user-coins">0</span>
-</div>
-
+        <div class="coin-panel">
+            <img src="asets/svg/koin.svg" alt="Koin" style="width: 18px; height: 18px; object-fit: contain;">
+            <span id="user-coins">0</span>
+        </div>
     </div>
 
+    <div id="level-progress-container" style="margin: 15px 20px 5px 20px;"></div>
     <div class="target-selection-container">
         <span class="target-label">KIRIM KE:</span>
         <div id="gift-targets" class="target-list">
@@ -162,12 +162,13 @@ Jangan gunakan kata kasar, hinaan, atau bullying dalam bentuk apa pun. Selalu ja
             <span class="gift-price">100</span>
         </div>
         
-        <div class="gift-item" onclick="sendGift('Figthing', 200, 5)">
+        <div class="gift-item" onclick="sendGift('Figthing', 2000, 5)">
             <img src="asets/png/gift5.png" class="gift-img">
             <span class="gift-label">FIGTHING</span>
-            <span class="gift-price">200</span>
+            <span class="gift-price">2000</span>
         </div>
     </div>
 </div> 
+
 </body>
 </html>

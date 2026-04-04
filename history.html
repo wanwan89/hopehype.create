@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Withdrawal History - HopeHype</title>
+<link rel="stylesheet" href="toast.css">
+<script src="toast.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --card-bg: #f9f9f9;
+            --text-main: #000000;
+            --text-muted: #8e8e93;
+            --border: #f2f2f2;
+            --accent-blue: #007bff;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+
+        html, body { 
+            margin: 0; padding: 0; height: 100%; overflow: hidden; 
+            font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); 
+        }
+
+        .container { 
+            max-width: 480px; margin: 0 auto; padding: 40px 24px;
+            height: 100%; display: flex; flex-direction: column;
+        }
+
+        .back-btn { 
+            cursor: pointer; font-size: 14px; font-weight: 700; color: var(--text-main); 
+            display: flex; align-items: center; gap: 8px; margin-bottom: 30px; 
+            letter-spacing: 1px; text-decoration: none;
+        }
+        
+        h2 { font-size: 32px; font-weight: 800; margin: 0 0 10px; letter-spacing: -1.5px; }
+        .sub-title { color: var(--text-muted); font-size: 14px; margin-bottom: 30px; display: block; }
+
+        .history-list { flex: 1; overflow-y: auto; padding-bottom: 20px; }
+
+        .history-item {
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: 14px; padding: 18px; margin-bottom: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .item-info { display: flex; flex-direction: column; gap: 4px; }
+        .item-amount { font-size: 18px; font-weight: 800; color: var(--text-main); }
+        .item-method { font-size: 11px; font-weight: 700; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 1px; }
+        .item-date { font-size: 11px; color: var(--text-muted); }
+
+        .badge { font-size: 10px; font-weight: 800; padding: 6px 12px; border-radius: 20px; text-transform: uppercase; }
+        .status-pending { background: #fff9db; color: #f08c00; }
+        .status-success { background: #e7f5ff; color: #007bff; }
+        .status-rejected { background: #fff5f5; color: #fa5252; }
+
+        .empty-state { text-align: center; margin-top: 100px; color: var(--text-muted); font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="saldo.html" class="back-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        BACK
+    </a>
+    
+    <h2>History</h2>
+    <span class="sub-title">Status penarikan koin terakhirmu</span>
+
+    <div class="history-list" id="historyContainer">
+        <div class="empty-state" id="loadingText">Mengambil data...</div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+    const supabaseUrl = 'https://hqetnqnvmdxdgfnnluew.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxZXRucW52bWR4ZGdmbm5sdWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MzUyODIsImV4cCI6MjA4NzMxMTI4Mn0.Cr9lDBZMqfeONi1dfyFzHpBtawBzZTQLBEWKmPJVAOA';
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    async function loadHistory() {
+        const container = document.getElementById('historyContainer');
+        
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) {
+                container.innerHTML = '<div class="empty-state">Silahkan login terlebih dahulu.</div>';
+                return;
+            }
+
+            const { data, error } = await supabaseClient
+                .from('withdraw_requests')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            if (data.length === 0) {
+                container.innerHTML = '<div class="empty-state">Belum ada riwayat penarikan.</div>';
+                return;
+            }
+
+            container.innerHTML = ''; 
+            
+            data.forEach(item => {
+                const date = new Date(item.created_at).toLocaleDateString('id-ID', {
+                    day: 'numeric', month: 'short', year: 'numeric'
+                });
+
+                const statusClass = `status-${item.status.toLowerCase()}`;
+                
+                // UPDATE DISINI: Kurs sekarang Rp 70
+                const idrAmount = (item.amount * 70).toLocaleString('id-ID');
+
+                const card = `
+                    <div class="history-item">
+                        <div class="item-info">
+                            <span class="item-method">${item.method} • Rp ${idrAmount}</span>
+                            <span class="item-amount">${item.amount} Koin</span>
+                            <span class="item-date">${date}</span>
+                        </div>
+                        <div class="badge ${statusClass}">${item.status}</div>
+                    </div>
+                `;
+                container.innerHTML += card;
+            });
+
+        } catch (err) {
+            container.innerHTML = `<div class="empty-state">Gagal memuat: ${err.message}</div>`;
+        }
+    }
+
+    window.onload = loadHistory;
+</script>
+</body>
+</html>

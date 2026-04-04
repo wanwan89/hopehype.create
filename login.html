@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Welcome to HopeHype</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <link rel="stylesheet" href="toast.css">
+  <script src="toast.js"></script>
+
+  <style>
+    :root {
+      --primary: #00a2ff;
+      --primary-soft: rgba(0, 162, 255, 0.1);
+      --dark: #121417;
+      --gray: #9ca3af;
+      --bg-input: #f9fafb;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+    
+    body {
+      margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center;
+      background-color: #ffffff; font-family: 'Poppins', sans-serif; padding: 20px;
+    }
+
+    .form {
+      display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 350px;
+      background: #ffffff; padding: 30px 25px; border-radius: 30px;
+      box-shadow: 0 15px 50px rgba(0,0,0,0.04); border: 1px solid #f0f0f0;
+    }
+
+    .form-header { text-align: center; margin-bottom: 10px; }
+    .form-header h1 { 
+      margin: 0; font-size: 28px; font-weight: 800; 
+      background: linear-gradient(135deg, var(--primary), #00d2ff); 
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+      letter-spacing: -1px;
+    }
+    .form-header p { margin: 5px 0 0; font-size: 12px; color: var(--gray); }
+
+    .flex-column { display: flex; flex-direction: column; gap: 6px; }
+    .flex-column label { color: #374151; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-left: 4px; }
+
+    .inputForm {
+      border: 1px solid #f3f4f6; border-radius: 16px; height: 52px; display: flex; align-items: center;
+      padding: 0 16px; background: var(--bg-input); transition: 0.2s; position: relative;
+    }
+
+    .input { border: none; width: 100%; height: 100%; background: transparent; color: #111827; font-size: 14px; margin-left: 10px; }
+    .inputForm:focus-within { 
+      border-color: var(--primary); 
+      background: #ffffff; 
+      box-shadow: 0 0 0 4px var(--primary-soft); 
+    }
+
+    /* Password Toggle Icon */
+    .toggle-pass { cursor: pointer; color: var(--gray); transition: 0.2s; display: flex; align-items: center; }
+    .toggle-pass:hover { color: var(--primary); }
+
+    /* Role & Category Selector */
+    .role-select { appearance: none; background: transparent; border: none; width: 100%; font-size: 14px; color: #111827; cursor: pointer; }
+    
+    #creatorCategoryArea { display: none; animation: slideDown 0.3s ease-out; }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Terms Checkbox */
+    .terms-area { display: flex; align-items: flex-start; gap: 8px; margin: 5px 0; }
+    .terms-area input { margin-top: 3px; accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer; }
+    .terms-area label { font-size: 11.5px; color: #6b7280; line-height: 1.4; }
+    .terms-area a { color: var(--primary); text-decoration: none; font-weight: 600; }
+
+    .button-submit {
+      margin-top: 10px; background: var(--dark); border: none; color: white; font-size: 14px;
+      font-weight: 700; border-radius: 16px; height: 52px; width: 100%; cursor: pointer; transition: 0.2s;
+    }
+    .button-submit:hover { background: #000; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+
+    .p-footer { text-align: center; color: var(--gray); font-size: 12px; margin-top: 15px; }
+    .span { color: var(--primary); font-weight: 700; cursor: pointer; text-decoration: none; }
+    
+    .divider { display: flex; align-items: center; text-align: center; margin: 15px 0; color: #d1d5db; font-size: 10px; letter-spacing: 1px; }
+    .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid #f3f4f6; }
+    .divider:not(:empty)::before { margin-right: 10px; }
+    .divider:not(:empty)::after { margin-left: 10px; }
+
+    .btn-google {
+      width: 100%; height: 50px; border-radius: 16px; display: flex; justify-content: center; align-items: center;
+      font-weight: 600; font-size: 14px; gap: 10px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; transition: 0.2s;
+    }
+    .btn-google:hover { background: #f9fafb; border-color: #d1d5db; }
+  </style>
+</head>
+<body>
+
+  <form class="form" id="mainForm">
+    <div class="form-header">
+      <h1>HopeHype</h1>
+      <p id="subTitle">Login dulu buat lanjut cari hype</p>
+    </div>
+
+    <div class="flex-column" id="usernameArea" style="display:none;">
+      <label>Username</label>
+      <div class="inputForm">
+        <svg width="18" height="18" fill="var(--gray)" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        <input id="username" placeholder="Nickname lo" class="input" type="text">
+      </div>
+    </div>
+
+    <div class="flex-column" id="roleArea" style="display:none;">
+      <label>Gue Mau Jadi</label>
+      <div class="inputForm">
+        <svg width="18" height="18" fill="var(--gray)" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        <select id="userRole" class="role-select">
+          <option value="user">User Biasa</option>
+          <option value="creator">Kreator HopeHype</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="flex-column" id="creatorCategoryArea">
+      <label>Jenis Karya</label>
+      <div class="inputForm">
+        <svg width="18" height="18" fill="var(--gray)" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+        <select id="creatorType" class="role-select">
+          <option value="post">Kreator Post (Visual/Teks)</option>
+          <option value="singer">Kreator Music (Singer/Audio)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="flex-column">
+      <label>Email</label>
+      <div class="inputForm">
+        <svg width="18" height="18" fill="var(--gray)" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+        <input id="email" placeholder="email@lo.com" class="input" type="email" required>
+      </div>
+    </div>
+
+    <div class="flex-column">
+      <label>Password</label>
+      <div class="inputForm">
+        <svg width="18" height="18" fill="var(--gray)" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6z"/></svg>
+        <input id="password" placeholder="Min. 6 Karakter" class="input" type="password" required>
+        <div class="toggle-pass" id="togglePass">
+          <svg id="eyeIcon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="terms-area" id="termsArea" style="display:none;">
+      <input type="checkbox" id="checkTerms">
+      <label for="checkTerms">saya setuju <a href="temp.html" target="_blank">Syarat dan ketentuan</a> HopeHype.</label>
+    </div>
+
+    <button type="submit" class="button-submit" id="submitBtn">Masuk Sekarang</button>
+
+    <p class="p-footer" id="footerText">Belum ada akun? <span class="span" id="switchMode">Daftar</span></p>
+    
+    <div class="divider">Atau lewat</div>
+
+    <button type="button" class="btn-google" id="googleBtn">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+      Google
+    </button>
+  </form>
+
+  <script>
+    const SUPABASE_URL = "https://hqetnqnvmdxdgfnnluew.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxZXRucW52bWR4ZGdmbm5sdWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MzUyODIsImV4cCI6MjA4NzMxMTI4Mn0.Cr9lDBZMqfeONi1dfyFzHpBtawBzZTQLBEWKmPJVAOA";
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let isSignUpMode = false;
+
+    // Toggle Mata Password
+    const passInput = document.getElementById("password");
+    document.getElementById("togglePass").onclick = () => {
+      const isPass = passInput.type === "password";
+      passInput.type = isPass ? "text" : "password";
+    };
+
+    // Handler Switch Login/Register
+    document.getElementById("switchMode").onclick = function() {
+      isSignUpMode = !isSignUpMode;
+      document.getElementById("usernameArea").style.display = isSignUpMode ? "flex" : "none";
+      document.getElementById("roleArea").style.display = isSignUpMode ? "flex" : "none";
+      document.getElementById("termsArea").style.display = isSignUpMode ? "flex" : "none";
+      
+      document.getElementById("subTitle").textContent = isSignUpMode ? "Bikin akun buat pamer karya lo" : "Login dulu buat lanjut cari hype";
+      document.getElementById("submitBtn").textContent = isSignUpMode ? "Daftar Akun" : "Masuk Sekarang";
+      document.getElementById("footerText").innerHTML = isSignUpMode ? "Udah punya akun? <span class='span' id='switchMode'>Login</span>" : "Belum ada akun? <span class='span' id='switchMode'>Daftar</span>";
+      
+      // Re-attach click event
+      document.getElementById("switchMode").onclick = arguments.callee;
+      handleRoleChange();
+    };
+
+    const roleSelect = document.getElementById("userRole");
+    const creatorArea = document.getElementById("creatorCategoryArea");
+    
+    function handleRoleChange() {
+      creatorArea.style.display = (isSignUpMode && roleSelect.value === "creator") ? "flex" : "none";
+    }
+    roleSelect.onchange = handleRoleChange;
+
+    // FORM SUBMIT
+    document.getElementById("mainForm").onsubmit = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = passInput.value;
+
+      if (!isSignUpMode) {
+        // LOGIN PROCESS
+        const { error } = await client.auth.signInWithPassword({ email, password });
+        if (error) toast("Akses Gagal", error.message);
+        else window.location.href = "index.html";
+      } else {
+        // SIGN UP PROCESS
+        const username = document.getElementById("username").value;
+        const role = roleSelect.value;
+        const type = document.getElementById("creatorType").value;
+        const agreed = document.getElementById("checkTerms").checked;
+
+        if (!username) return toast("Info", "Isi username lo dulu");
+        if (!agreed) return toast("Legal", "Ceklis aturan main kita dulu bro");
+
+        let finalRole = (role === 'creator') ? `creator_${type}` : 'user';
+        const avatar = `https://api.dicebear.com/7.x/initials/svg?seed=${username}`;
+
+        const { error } = await client.auth.signUp({
+          email, password,
+          options: { 
+            data: { username, avatar_url: avatar, role: finalRole } 
+          }
+        });
+
+        if (error) toast("Gagal Daftar", error.message);
+        else toast("Berhasil!", "Akun lo udah jadi. Cek email buat aktivasi!");
+      }
+    };
+
+    document.getElementById("googleBtn").onclick = async () => {
+      await client.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + "index.html" }
+      });
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Withdraw - HopeHype</title>
+<link rel="stylesheet" href="css/toast.css">
+<script src="js/toast.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --card-bg: #f9f9f9;
+            --text-main: #000000;
+            --text-muted: #8e8e93;
+            --border: #f2f2f2;
+            --accent-blue: #007bff;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        html, body { 
+            margin: 0; 
+            padding: 0;
+            height: 100%;
+            overflow: hidden; /* Lock Scroll */
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg); 
+            color: var(--text-main); 
+        }
+
+        .container { 
+            max-width: 480px; 
+            margin: 0 auto; 
+            padding: 40px 24px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .back-btn { 
+            cursor: pointer; 
+            font-size: 14px; 
+            font-weight: 700; 
+            color: var(--text-main); 
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 30px; 
+            letter-spacing: 1px;
+            text-decoration: none;
+        }
+        
+        h2 { 
+            font-size: 36px; 
+            font-weight: 800; 
+            margin: 0 0 10px; 
+            letter-spacing: -2px; 
+        }
+
+        .sub-title {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 30px;
+            display: block;
+        }
+        
+        .info-box { 
+            background: var(--card-bg); 
+            padding: 16px 20px; 
+            border-radius: 12px; 
+            margin-bottom: 30px; 
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent-blue); 
+        }
+        .info-box p { margin: 0; font-size: 13px; color: var(--text-main); line-height: 1.6; }
+        .info-box b { color: var(--accent-blue); }
+
+        .form-group { margin-bottom: 22px; }
+        label { 
+            display: block; 
+            font-size: 11px; 
+            color: var(--text-muted); 
+            text-transform: uppercase; 
+            letter-spacing: 1.5px; 
+            margin-bottom: 8px; 
+            font-weight: 700; 
+        }
+        
+        input, select {
+            width: 100%; 
+            padding: 12px 0; 
+            border: none; 
+            border-bottom: 2px solid var(--border);
+            font-size: 18px; 
+            font-weight: 600; 
+            background: transparent;
+            color: var(--text-main);
+            border-radius: 0;
+            transition: 0.3s;
+        }
+
+        input:focus { border-bottom-color: var(--accent-blue); }
+
+        #idrEstimation {
+            font-size: 13px;
+            color: var(--accent-blue);
+            font-weight: 700;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .submit-btn {
+            width: 100%; 
+            background: var(--accent-blue); 
+            color: #fff; 
+            border: none; 
+            padding: 22px;
+            border-radius: 14px;
+            font-weight: 800; 
+            font-size: 14px;
+            text-transform: uppercase; 
+            letter-spacing: 1.5px; 
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.2);
+            transition: all 0.2s;
+            margin-top: auto; /* Push to bottom */
+            margin-bottom: 20px;
+        }
+
+        .submit-btn:active { transform: scale(0.96); background: #0056b3; }
+        .submit-btn:disabled { background: #e0e0e0; cursor: not-allowed; color: #999; box-shadow: none; }
+
+        input::placeholder { color: #ccc; font-size: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="saldo.html" class="back-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        BACK
+    </a>
+    
+    <h2>Withdrawal</h2>
+    <span class="sub-title">Tarik koinmu menjadi saldo nyata</span>
+
+    <div class="info-box">
+        <p>Kurs: <b>1 Koin = Rp 70</b><br>Minimal penarikan <b>200 koin</b></p>
+    </div>
+
+    <div class="form-group">
+        <label>Jumlah Koin</label>
+        <input type="number" id="wdAmount" placeholder="Min. 200" min="200" oninput="updateEstimation()">
+        <div id="idrEstimation">Estimasi: Rp 0</div>
+    </div>
+
+    <div class="form-group">
+        <label>Metode Pembayaran</label>
+        <select id="wdMethod">
+            <option value="DANA">DANA</option>
+            <option value="GOPAY">GOPAY</option>
+            <option value="OVO">OVO</option>
+            <option value="BANK_BCA">BANK BCA</option>
+            <option value="BANK_MANDIRI">BANK MANDIRI</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Nama Pemilik Rekening</label>
+        <input type="text" id="wdAccountName" placeholder="Nama sesuai ewallet/bank">
+    </div>
+
+    <div class="form-group">
+        <label>Nomor Rekening / HP</label>
+        <input type="text" id="wdAccount" placeholder="08xxxx / 12345678">
+    </div>
+
+    <button class="submit-btn" id="btnSubmit">Confirm Request</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+    const supabaseUrl = 'https://hqetnqnvmdxdgfnnluew.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxZXRucW52bWR4ZGdmbm5sdWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MzUyODIsImV4cCI6MjA4NzMxMTI4Mn0.Cr9lDBZMqfeONi1dfyFzHpBtawBzZTQLBEWKmPJVAOA';
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    function updateEstimation() {
+        const amountInput = document.getElementById('wdAmount');
+        const estDisplay = document.getElementById('idrEstimation');
+        const kurs = 70; // Pakai kurs 70
+        const val = parseInt(amountInput.value);
+
+        if (val && val >= 200) {
+            const rupiah = val * kurs;
+            estDisplay.innerText = "Estimasi: Rp " + rupiah.toLocaleString('id-ID');
+            estDisplay.style.color = "var(--accent-blue)";
+        } else {
+            estDisplay.innerText = "Estimasi: Rp 0";
+            estDisplay.style.color = "var(--text-muted)";
+        }
+    }
+
+    async function handleWithdraw() {
+        const amountInput = document.getElementById('wdAmount');
+        const methodInput = document.getElementById('wdMethod');
+        const accountNameInput = document.getElementById('wdAccountName');
+        const accountInput = document.getElementById('wdAccount');
+        const btn = document.getElementById('btnSubmit');
+
+        const amount = parseInt(amountInput.value);
+        const method = methodInput.value;
+        const accountName = accountNameInput.value;
+        const account = accountInput.value;
+
+        // PAKAI TOAST LU (Title, Message, Type)
+        if (!amount || amount < 200) {
+            toast("Gagal", "Minimal penarikan 200 koin!", "warning");
+            return;
+        }
+        if (!accountName || !account) {
+            toast("Data Kosong", "Mohon lengkapi data rekening.", "warning");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Processing...";
+
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) throw new Error("Silahkan login terlebih dahulu.");
+
+            // 1. Cek Saldo
+            const { data: profile, error: pError } = await supabaseClient
+                .from('profiles')
+                .select('coins')
+                .eq('id', user.id)
+                .single();
+
+            if (pError) throw new Error("Gagal mengambil data saldo.");
+            if (profile.coins < amount) throw new Error("Saldo koin tidak cukup!");
+
+            // 2. Potong Koin
+            const { error: uError } = await supabaseClient
+                .from('profiles')
+                .update({ coins: profile.coins - amount })
+                .eq('id', user.id);
+
+            if (uError) throw new Error("Gagal memproses koin.");
+
+            // 3. Simpan Request WD
+            const { error: iError } = await supabaseClient
+                .from('withdraw_requests')
+                .insert({
+                    user_id: user.id,
+                    amount: amount,
+                    method: method,
+                    account_name: accountName,
+                    account_number: account,
+                    status: 'pending'
+                });
+
+            if (iError) {
+                // Rollback koin jika simpan request gagal
+                await supabaseClient.from('profiles').update({ coins: profile.coins }).eq('id', user.id);
+                throw iError;
+            }
+
+            // 4. 🔥 KIRIM NOTIFIKASI KE LONCENG HOME (INI YANG DARI TADI HILANG)
+            const estimasiRpValue = (amount * 70).toLocaleString('id-ID');
+            const { error: notifError } = await supabaseClient
+                .from('notifications')
+                .insert([{
+                    user_id: user.id,
+                    type: 'withdraw',
+                    message: `Penarikan <b>${amount}</b> koin (Rp ${estimasiRpValue}) sedang diproses admin.`,
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                }]);
+            
+            if(notifError) console.error("Notif Error:", notifError); // Biar tau kalau error, tapi nggak ganggu WD
+
+            // NOTIF BERHASIL
+            toast("Berhasil", "Permintaan tarik koin terkirim!", "success");
+
+            setTimeout(() => {
+                // Tambahin cache-buster biar HP maksa reload saldo.html
+                window.location.replace('saldo.html?t=' + new Date().getTime());
+            }, 2500);
+
+        } catch (err) {
+            console.error(err);
+            toast("Error", err.message, "error");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Confirm Request";
+        }
+    }
+
+    document.getElementById('btnSubmit').addEventListener('click', handleWithdraw);
+
+</script>
+
+
+</body>
+</html>

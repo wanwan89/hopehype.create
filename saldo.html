@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wallet - HopeHype</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #ffffff;          /* Background Putih Bersih */
+            --card-bg: #ffffff;     /* Box tetep putih */
+            --text-main: #000000;    /* Teks Utama Hitam */
+            --text-muted: #8e8e93;   /* Teks abu-abu kalem */
+            --border: #f2f2f2;       /* Border abu-abu sangat muda */
+            --accent-blue: #007bff;  /* Biru Electric HopeHype */
+            --success: #34c759;      /* Hijau Standar iOS/Android */
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        .wallet-wrapper {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 40px 24px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Section */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 50px;
+        }
+
+        .back-link {
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10px;
+            letter-spacing: 1px;
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--success);
+            border-radius: 50%;
+        }
+
+        /* Balance Display */
+        .balance-section {
+            margin-bottom: 60px;
+        }
+
+        .label-small {
+            font-size: 11px;
+            color: var(--text-muted); /* Di mode putih, label lebih bagus abu-abu */
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .main-balance {
+            font-size: 54px;
+            font-weight: 800;
+            letter-spacing: -2px;
+            margin: 0;
+            color: var(--text-main);
+        }
+
+        .accent-line {
+            width: 45px;
+            height: 5px;
+            background: var(--accent-blue);
+            margin-top: 15px;
+            border-radius: 2px;
+        }
+
+        /* Assets Grid */
+        .assets-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .asset-box {
+            background: var(--card-bg);
+            border: 1.5px solid var(--border);
+            padding: 24px;
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+
+        .asset-box:active {
+            border-color: var(--accent-blue);
+            background: #f9f9f9;
+        }
+
+        .asset-val {
+            font-size: 26px;
+            font-weight: 800;
+            display: block;
+            margin-top: 6px;
+            color: var(--text-main);
+        }
+
+        /* Menu Items */
+        .menu-row {
+            padding: 22px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .menu-row:active { background: #fafafa; }
+
+        .menu-title { font-weight: 700; font-size: 16px; }
+        .menu-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: block; }
+
+        .arrow-blue {
+            color: var(--accent-blue);
+            font-weight: 800;
+            font-size: 20px;
+        }
+
+        /* Services */
+        .services-area {
+            margin-top: 50px;
+        }
+
+        .services-list {
+            display: flex;
+            gap: 25px;
+            margin-top: 18px;
+        }
+
+        .service-item {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+        }
+
+        .square-icon {
+            width: 7px;
+            height: 7px;
+            background: var(--accent-blue);
+        }
+
+        /* Action Button */
+        .withdraw-btn {
+            margin-top: auto;
+            padding-top: 40px;
+            width: 100%;
+        }
+
+        .btn-blue {
+            width: 100%;
+            background: var(--accent-blue);
+            color: #ffffff;
+            border: none;
+            padding: 20px;
+            border-radius: 14px;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .btn-blue:active {
+            transform: scale(0.96);
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<div class="wallet-wrapper">
+    <div class="header">
+        <div class="back-link" onclick="window.location.href='index.html'">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            BACK
+        </div>
+        <div class="status-indicator">
+            <div class="dot"></div>
+            HOPE PAYMENT
+        </div>
+    </div>
+
+    <div class="balance-section">
+        <span class="label-small">Estimated IDR Balance</span>
+        <h1 class="main-balance" id="idrDisplay">Rp 0</h1>
+        <div class="accent-line"></div>
+    </div>
+
+    <div class="assets-grid">
+        <div class="asset-box">
+            <span class="label-small">Coins</span>
+            <span class="asset-val" id="coinDisplay">0</span>
+        </div>
+        <div class="asset-box">
+            <span class="label-small">Coupons</span>
+            <span class="asset-val">0</span>
+        </div>
+    </div>
+
+    <div class="menu-row" onclick="window.location.href='history.html'">
+        <div>
+            <span class="menu-title">Transactions</span>
+            <span class="menu-sub" id="lastTrx">Cek riwayat koin & transaksi</span>
+        </div>
+        <div class="arrow-blue">›</div>
+    </div>
+
+    <div class="services-area">
+        <span class="label-small">Syarat & ketentuan</span>
+        <div class="services-list">
+            <div class="service-item"><div class="square-icon"></div>MONETIZE</div>
+            <div class="service-item"><div class="square-icon"></div>REWARDS</div>
+            <div class="service-item"><div class="square-icon"></div>ADS</div>
+        </div>
+    </div>
+
+    <div class="withdraw-btn">
+        <button class="btn-blue" onclick="location.href='penarikan.html'">Request Withdrawal</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+    // Konfigurasi Supabase
+    const supabaseUrl = 'https://hqetnqnvmdxdgfnnluew.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxZXRucW52bWR4ZGdmbm5sdWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MzUyODIsImV4cCI6MjA4NzMxMTI4Mn0.Cr9lDBZMqfeONi1dfyFzHpBtawBzZTQLBEWKmPJVAOA';
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    async function loadWalletData() {
+        try {
+            // 1. Ambil User yang sedang Login
+            const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+            
+            if (authError || !user) {
+                console.log("User belum login");
+                return;
+            }
+
+            // 2. Ambil data koin ASLI dari tabel profiles
+            const { data: profile, error: profileError } = await supabaseClient
+                .from('profiles')
+                .select('coins')
+                .eq('id', user.id)
+                .single();
+
+            if (profileError) throw profileError;
+
+            // 3. Update Tampilan
+            const realCoins = profile.coins || 0;
+            const idrRate = 70; // Kurs Rp 70 sesuai kesepakatan baru
+            
+            document.getElementById('coinDisplay').innerText = realCoins.toLocaleString('id-ID');
+            document.getElementById('idrDisplay').innerText = 'Rp ' + (realCoins * idrRate).toLocaleString('id-ID');
+
+        } catch (err) {
+            console.error("Gagal load saldo:", err.message);
+        }
+    }
+
+    window.onload = loadWalletData;
+</script>
+
+
+</body>
+</html>

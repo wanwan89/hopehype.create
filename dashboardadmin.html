@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HopeHype | Central Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6; --bg-body: #020617; --bg-side: #0f172a;
+            --glass: rgba(30, 41, 59, 0.7); --glass-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc; --text-muted: #94a3b8;
+            --accent-green: #10b981; --accent-red: #ef4444; --accent-gold: #f59e0b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg-body); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        
+        .sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: var(--bg-side); border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; transition: 0.3s; z-index: 1000; }
+        .sidebar.open { left: 0; }
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 999; }
+        .overlay.active { display: block; }
+        .nav-menu { flex: 1; padding: 20px 15px; }
+        .nav-link { width: 100%; text-align: left; padding: 14px 20px; color: var(--text-muted); border-radius: 12px; margin-bottom: 8px; background: transparent; border: none; cursor: pointer; font-size: 13px; font-weight: 800; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+        .nav-link.active { background: var(--primary); color: white; }
+        .badge { background: var(--accent-red); color: white; padding: 2px 6px; border-radius: 6px; font-size: 11px; display: none; }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; background: radial-gradient(circle at top right, #1e293b, #020617); }
+        .top-bar { padding: 15px 25px; border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; gap: 15px; position: sticky; top:0; background: rgba(2,6,23,0.8); backdrop-filter: blur(10px); z-index:100; }
+        .container { padding: 25px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .page-section { display: none; animation: fadeIn 0.3s ease; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .glass-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 20px; padding: 20px; margin-bottom: 15px; backdrop-filter: blur(10px); transition: 0.3s; }
+        .btn { padding: 10px 12px; border-radius: 10px; border: none; font-weight: 800; cursor: pointer; font-size: 11px; text-transform: uppercase; transition: 0.2s; }
+        .btn:active { transform: scale(0.95); }
+        .btn-acc { background: var(--accent-green); color: white; }
+        .btn-rej { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); }
+        .btn-warn { background: transparent; color: var(--accent-gold); border: 1px solid var(--accent-gold); }
+        .btn-blue { background: var(--primary); color: white; }
+        .btn-inactive { background: var(--glass); color: var(--text-muted); }
+
+        .maintenance-card { border: 2px solid transparent; transition: 0.4s; }
+        .maintenance-active { border-color: var(--accent-red); background: rgba(239, 68, 68, 0.15); }
+
+        .sub-nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+        .modal-input { width: 100%; padding: 12px; margin: 8px 0 15px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--bg-body); color: white; outline: none; }
+
+        @media (min-width: 1024px) { .sidebar { position: relative; left: 0; } }
+    </style>
+</head>
+<body>
+    <div class="overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    
+    <div class="overlay" id="userEditOverlay" onclick="closeUserEditModal()"></div>
+    <div class="modal-edit" id="userEditModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:var(--bg-side); padding:25px; border-radius:20px; z-index:1001; width:90%; max-width:400px; border:1px solid var(--glass-border); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+        <h3 style="margin-bottom:20px;">Edit Pengguna</h3>
+        <input type="hidden" id="edit-user-id">
+        <input type="text" id="edit-username" class="modal-input" placeholder="Username">
+        <input type="number" id="edit-coins" class="modal-input" placeholder="Koin">
+        <input type="text" id="edit-role" class="modal-input" placeholder="Role (admin/verified/banned)">
+        <textarea id="edit-bio" class="modal-input" rows="3" placeholder="Bio"></textarea>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-acc" style="flex:1" onclick="saveUserChanges()">SIMPAN</button>
+            <button class="btn btn-rej" style="flex:1" onclick="closeUserEditModal()">BATAL</button>
+        </div>
+    </div>
+
+    <aside class="sidebar" id="mySidebar">
+        <div style="padding:30px; border-bottom:1px solid var(--glass-border); font-weight:800; letter-spacing:2px;">HOPEHYPE ADMIN</div>
+        <nav class="nav-menu">
+            <button onclick="showPage('overview', this)" class="nav-link active">Dashboard</button>
+            <button onclick="showPage('transaksi', this)" class="nav-link">Withdrawal <span id="badge-wd" class="badge">0</span></button>
+            <button onclick="showPage('users', this)" class="nav-link">Pengguna</button>
+            <button onclick="showPage('posts', this)" class="nav-link">Moderasi Post <span id="badge-posts" class="badge">0</span></button>
+            <button onclick="showPage('musik', this)" class="nav-link">Moderasi Musik <span id="badge-music" class="badge">0</span></button>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-bar">
+            <button onclick="toggleSidebar()" class="btn" style="background:var(--glass); color:white; border:1px solid var(--glass-border);">MENU</button>
+            <h2 id="current-title">DASHBOARD</h2>
+        </header>
+
+        <div class="container">
+            <section id="page-overview" class="page-section active">
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:20px;">
+                    <div class="glass-card"><span>TOTAL PENGGUNA</span><h2 id="s-users">0</h2></div>
+                    <div class="glass-card"><span>KOIN BEREDAR</span><h2 id="s-coins">0</h2></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:15px;">
+                    <div class="glass-card maintenance-card" id="maintenanceCard">
+                        <h3 style="margin-bottom:10px;">Mode Maintenance</h3>
+                        <p id="m-desc" style="color:var(--text-muted); font-size:12px; margin-bottom:15px;">Aplikasi saat ini: <b id="m-status-text">ONLINE</b></p>
+                        <button id="m-btn" class="btn btn-acc" style="width:100%" onclick="toggleMaintenance()">AKTIFKAN MODE PERBAIKAN</button>
+                    </div>
+
+                    <div class="glass-card">
+                        <h3 style="margin-bottom:10px;"> Global Broadcast</h3>
+                        <textarea id="broadcast-msg" class="modal-input" rows="2" placeholder="Tulis pengumuman..."></textarea>
+                        <button class="btn btn-blue" style="width:100%" onclick="sendBroadcast()">KIRIM KE SEMUA USER</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-transaksi" class="page-section">
+                <div class="sub-nav">
+                    <div class="sub-nav-tabs">
+                        <button id="tab-wd-pending" class="btn btn-acc" onclick="loadWD('pending')">PENDING</button>
+                        <button id="tab-wd-history" class="btn btn-inactive" onclick="loadWD('history')">RIWAYAT</button>
+                    </div>
+                    <button id="btn-clear-all-wd" class="btn btn-rej" style="display:none;" onclick="clearAllWDHistory()">HAPUS SEMUA RIWAYAT</button>
+                </div>
+                <div id="wdReviewList"></div>
+            </section>
+
+            <section id="page-users" class="page-section">
+                <input type="text" id="search-user" class="modal-input" placeholder="Cari berdasarkan username..." onkeyup="filterUsers()" style="margin: 0 0 20px 0; background: var(--glass); backdrop-filter: blur(10px);">
+                <div id="userListArea" style="display: flex; flex-direction: column; gap: 15px;"></div>
+            </section>
+
+            <section id="page-posts" class="page-section">
+                <input type="text" id="search-post" class="modal-input" placeholder="Cari postingan (username atau caption)..." onkeyup="filterPosts()" style="margin: 0 0 20px 0; background: var(--glass); backdrop-filter: blur(10px);">
+                <div class="sub-nav">
+                    <div class="sub-nav-tabs">
+                        <button id="tab-post-pending" class="btn btn-acc" onclick="loadPosts('pending')">PENDING</button>
+                        <button id="tab-post-aktif" class="btn btn-inactive" onclick="loadPosts('approved')">AKTIF</button>
+                    </div>
+                    <button id="btn-acc-all-posts" class="btn btn-blue" onclick="approveAll('posts')">ACC SEMUA</button>
+                </div>
+                <div id="postReviewList" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:20px;"></div>
+            </section>
+
+            <section id="page-musik" class="page-section">
+                <div class="sub-nav">
+                    <div class="sub-nav-tabs">
+                        <button id="tab-music-pending" class="btn btn-acc" onclick="loadMusic('pending')">PENDING</button>
+                        <button id="tab-music-aktif" class="btn btn-inactive" onclick="loadMusic('approved')">AKTIF</button>
+                    </div>
+                    <button id="btn-acc-all-music" class="btn btn-blue" onclick="approveAll('songs')">ACC SEMUA</button>
+                </div>
+                <div id="musicReviewList" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:20px;"></div>
+            </section>
+        </div>
+    </main>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+        const db = createClient('https://hqetnqnvmdxdgfnnluew.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxZXRucW52bWR4ZGdmbm5sdWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MzUyODIsImV4cCI6MjA4NzMxMTI4Mn0.Cr9lDBZMqfeONi1dfyFzHpBtawBzZTQLBEWKmPJVAOA');
+
+        window.userMap = {};
+        window.isMaintenance = false;
+
+        // --- NAVIGATION ---
+        window.toggleSidebar = () => {
+            document.getElementById('mySidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        };
+
+        window.showPage = (p, b) => {
+            document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('page-' + p).classList.add('active');
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            if(b) b.classList.add('active');
+            document.getElementById('current-title').innerText = p.toUpperCase();
+            if(window.innerWidth < 1024) {
+                document.getElementById('mySidebar').classList.remove('open');
+                document.getElementById('sidebarOverlay').classList.remove('active');
+            }
+            
+            if(p === 'overview') updateStats();
+            if(p === 'transaksi') loadWD('pending');
+            if(p === 'users') loadUsers();
+            if(p === 'posts') {
+                document.getElementById('search-post').value = '';
+                loadPosts('pending');
+            }
+            if(p === 'musik') loadMusic('pending');
+        };
+
+        // --- MAINTENANCE & BROADCAST ---
+        async function checkMaintenance() {
+            const { data } = await db.from('app_settings').select('value').eq('key', 'maintenance_mode').maybeSingle();
+            window.isMaintenance = data ? data.value === 'true' : false;
+            updateMaintenanceUI();
+        }
+
+        function updateMaintenanceUI() {
+            const btn = document.getElementById('m-btn');
+            const txt = document.getElementById('m-status-text');
+            const card = document.getElementById('maintenanceCard');
+            if(window.isMaintenance) {
+                card.classList.add('maintenance-active');
+                txt.innerText = "OFFLINE"; txt.style.color = "var(--accent-red)";
+                btn.innerText = "MATIKAN MODE PERBAIKAN"; btn.className = "btn btn-rej";
+            } else {
+                card.classList.remove('maintenance-active');
+                txt.innerText = "ONLINE"; txt.style.color = "var(--accent-green)";
+                btn.innerText = "AKTIFKAN MODE PERBAIKAN"; btn.className = "btn btn-acc";
+            }
+        }
+
+        window.toggleMaintenance = async () => {
+            const newState = !window.isMaintenance;
+            await db.from('app_settings').upsert({ key: 'maintenance_mode', value: newState.toString() });
+            window.isMaintenance = newState;
+            updateMaintenanceUI();
+        };
+
+        window.sendBroadcast = async () => {
+            const msg = document.getElementById('broadcast-msg').value;
+            if(!msg) return;
+            const { data: users } = await db.from('profiles').select('id');
+            const notifs = users.map(u => ({ user_id: u.id, message: `[PENGUMUMAN] ${msg}`, type: 'system' }));
+            await db.from('notifications').insert(notifs);
+            alert("Broadcast sukses!");
+            document.getElementById('broadcast-msg').value = '';
+        };
+
+        // --- WITHDRAWAL ---
+        window.loadWD = async (status) => {
+            document.getElementById('tab-wd-pending').className = status==='pending'?'btn btn-acc':'btn btn-inactive';
+            document.getElementById('tab-wd-history').className = status==='history'?'btn btn-acc':'btn btn-inactive';
+            
+            // Tampilkan tombol Hapus Semua Riwayat hanya di tab riwayat
+            document.getElementById('btn-clear-all-wd').style.display = status==='history' ? 'block' : 'none';
+
+            let query = db.from('withdraw_requests').select('*').order('created_at', {ascending: false});
+            if(status === 'pending') query = query.eq('status', 'pending');
+            else query = query.neq('status', 'pending');
+            const { data } = await query;
+            const list = document.getElementById('wdReviewList');
+            list.innerHTML = data && data.length > 0 ? data.map(w => `
+                <div class="glass-card" style="border-left: 5px solid ${w.status==='success'?'#10b981':(w.status==='rejected'?'#ef4444':'#f59e0b')};">
+                    <div style="display:flex; justify-content:space-between;"><b>${w.amount} KOIN</b><small>${w.status.toUpperCase()}</small></div>
+                    <p style="font-size:12px; margin:10px 0;">${w.method} | ${w.account_name} (${w.account_number})</p>
+                    <div style="display:flex; gap:8px;">
+                        ${w.status === 'pending' ? `<button class="btn btn-acc" onclick="procWD('${w.id}','${w.user_id}',${w.amount},'success')">ACC</button> <button class="btn btn-rej" onclick="procWD('${w.id}','${w.user_id}',${w.amount},'rejected')">REJECT</button>` : `<button class="btn btn-rej" onclick="deleteWDHistory('${w.id}')">HAPUS LOG INI</button>`}
+                    </div>
+                </div>
+            `).join('') : "Tidak ada data.";
+            updateBadges();
+        };
+
+        window.procWD = async (id, uid, amt, s) => {
+            if(s === 'rejected') {
+                const r = prompt("Alasan:"); if(!r) return;
+                const { data: p } = await db.from('profiles').select('coins').eq('id', uid).single();
+                await db.from('profiles').update({ coins: (p.coins || 0) + amt }).eq('id', uid);
+                await db.from('withdraw_requests').update({ status: 'rejected' }).eq('id', id);
+                await db.from('notifications').insert([{ user_id: uid, message: `WD Ditolak: ${amt} koin direfund. Alasan: ${r}`, type: 'system' }]);
+            } else {
+                if(!confirm("Sudah transfer?")) return;
+                await db.from('withdraw_requests').update({ status: 'success' }).eq('id', id);
+                await db.from('notifications').insert([{ user_id: uid, message: `WD Berhasil Cair!`, type: 'system' }]);
+            }
+            loadWD('pending');
+        };
+
+        window.deleteWDHistory = async (id) => {
+            if(!confirm("Hapus log riwayat ini?")) return;
+            const { error } = await db.from('withdraw_requests').delete().eq('id', id);
+            if(error) alert("Gagal hapus: " + error.message);
+            else loadWD('history');
+        };
+
+        window.clearAllWDHistory = async () => {
+            if(!confirm("Yakin ingin menghapus SEMUA data riwayat (yang sudah di ACC/REJECT)?")) return;
+            const { error } = await db.from('withdraw_requests').delete().neq('status', 'pending');
+            if(error) alert("Gagal menghapus: " + error.message);
+            else loadWD('history');
+        };
+
+        // --- USERS ---
+        window.loadUsers = async () => {
+            const { data } = await db.from('profiles').select('*').order('created_at', {ascending: false});
+            window.userMap = {};
+            document.getElementById('userListArea').innerHTML = data.map(u => {
+                window.userMap[u.id] = u;
+                const isBanned = u.role === 'banned';
+                return `
+                <div class="glass-card user-card-item" data-username="${(u.username||'').toLowerCase()}" style="display:flex; flex-direction:column; gap:12px; ${isBanned?'opacity:0.5;':''}">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div><b style="font-size:14px;">${u.username || 'Anonim'}</b> <span style="font-size:10px; padding:2px 6px; background:var(--glass); border-radius:4px;">${(u.role||'user').toUpperCase()}</span></div>
+                        <div style="color:var(--accent-gold); font-weight:800;">${u.coins||0} KOIN</div>
+                    </div>
+                    <div style="display:flex; gap:8px; width:100%;">
+                        <button class="btn btn-blue" style="flex:1;" onclick="openEditUserModal('${u.id}')">EDIT</button>
+                        <button class="btn btn-warn" style="flex:1;" onclick="sendWarning('${u.id}', '${u.username}')">WARN</button>
+                        <button class="btn btn-rej" style="flex:1;" onclick="toggleBan('${u.id}', '${u.username}', ${!isBanned})">${isBanned?'UNBAN':'BAN'}</button>
+                    </div>
+                </div>`;
+            }).join('');
+        };
+
+        window.filterUsers = () => {
+            const val = document.getElementById('search-user').value.toLowerCase();
+            document.querySelectorAll('.user-card-item').forEach(el => {
+                el.style.display = el.dataset.username.includes(val) ? 'flex' : 'none';
+            });
+        };
+
+        window.sendWarning = async (userId, username) => {
+            const msg = prompt(`Tulis pesan peringatan untuk @${username}:`);
+            if (!msg) return;
+            const { error } = await db.from('notifications').insert([{ user_id: userId, message: `[ADMIN] ${msg}`, type: 'warning' }]);
+            if (error) alert("Gagal kirim: " + error.message);
+            else alert("Peringatan terkirim ke @" + username);
+        };
+
+        window.toggleBan = async (id, name, ban) => {
+            if(!confirm(`Yakin ${ban?'Ban':'Unban'} ${name}?`)) return;
+            await db.from('profiles').update({ role: ban?'banned':'user' }).eq('id', id);
+            loadUsers();
+        };
+
+        window.openEditUserModal = (id) => {
+            const u = window.userMap[id];
+            document.getElementById('edit-user-id').value = id;
+            document.getElementById('edit-username').value = u.username || '';
+            document.getElementById('edit-coins').value = u.coins || 0;
+            document.getElementById('edit-role').value = u.role || '';
+            document.getElementById('edit-bio').value = u.bio || '';
+            document.getElementById('userEditOverlay').classList.add('active');
+            document.getElementById('userEditModal').style.display = 'block';
+        };
+
+        window.closeUserEditModal = () => {
+            document.getElementById('userEditOverlay').classList.remove('active');
+            document.getElementById('userEditModal').style.display = 'none';
+        };
+
+        window.saveUserChanges = async () => {
+            const id = document.getElementById('edit-user-id').value;
+            const upd = {
+                username: document.getElementById('edit-username').value,
+                coins: parseInt(document.getElementById('edit-coins').value),
+                role: document.getElementById('edit-role').value,
+                bio: document.getElementById('edit-bio').value
+            };
+            await db.from('profiles').update(upd).eq('id', id);
+            closeUserEditModal(); loadUsers();
+        };
+
+        // --- POSTS ---
+        window.loadPosts = async (status) => {
+            document.getElementById('tab-post-pending').className = status==='pending'?'btn btn-acc':'btn btn-inactive';
+            document.getElementById('tab-post-aktif').className = status==='approved'?'btn btn-acc':'btn btn-inactive';
+            document.getElementById('btn-acc-all-posts').style.display = status==='pending'?'block':'none';
+            document.getElementById('search-post').value = ''; 
+
+            // Tarik data postingan
+            const { data: postsData } = await db.from('posts').select('*').eq('status', status).order('created_at', {ascending: false});
+            
+            // Tarik data profiles (untuk mencocokkan user_id menjadi username yang asli)
+            const { data: profilesData } = await db.from('profiles').select('id, username');
+            const profileMap = {};
+            if(profilesData) {
+                profilesData.forEach(pr => profileMap[pr.id] = pr.username);
+            }
+
+            document.getElementById('postReviewList').innerHTML = postsData && postsData.length > 0 ? postsData.map(p => {
+                // Deteksi username: cek bawaan post dulu, kalau tidak ada, pakai mapping ID, kalau tidak ada juga pakai Anonim
+                const dUsername = p.username || profileMap[p.user_id] || 'Anonim';
+                const dCaption = p.caption && p.caption !== 'undefined' ? p.caption : '';
+                
+                // Variabel untuk fitur search bar
+                const searchStr = `${dUsername.toLowerCase()} ${dCaption.toLowerCase()}`;
+                
+                return `
+                <div class="glass-card post-card-item" data-search="${searchStr}">
+                    <img src="${p.image_url}" style="width:100%; border-radius:10px; margin-bottom:12px; object-fit:cover;">
+                    <div style="font-size:13px; margin-bottom:12px; line-height: 1.4;">
+                        <b style="color:var(--primary);">@${dUsername}</b><br>
+                        <span style="color:var(--text-main);">${dCaption}</span>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        ${status==='pending'?`<button class="btn btn-acc" style="flex:1" onclick="upP('${p.id}','approved')">ACC</button>`:''}
+                        <button class="btn btn-rej" style="flex:1" onclick="upP('${p.id}','rejected')">${status==='pending'?'REJ':'TAKEDOWN'}</button>
+                    </div>
+                </div>
+            `}).join('') : "Tidak ada postingan.";
+            updateBadges();
+        };
+
+        // Fungsi Filter Postingan
+        window.filterPosts = () => {
+            const val = document.getElementById('search-post').value.toLowerCase();
+            document.querySelectorAll('.post-card-item').forEach(el => {
+                el.style.display = el.dataset.search.includes(val) ? 'block' : 'none';
+            });
+        };
+
+        window.upP = async (id, s) => {
+            await db.from('posts').update({ status: s }).eq('id', id);
+            loadPosts(s === 'approved' ? 'pending' : 'approved');
+        };
+
+        // --- MUSIC ---
+        window.loadMusic = async (status) => {
+            document.getElementById('tab-music-pending').className = status==='pending'?'btn btn-acc':'btn btn-inactive';
+            document.getElementById('tab-music-aktif').className = status==='approved'?'btn btn-acc':'btn btn-inactive';
+            document.getElementById('btn-acc-all-music').style.display = status==='pending'?'block':'none';
+            
+            const { data } = await db.from('songs').select('*').eq('status', status).order('id', {ascending: false});
+            
+            document.getElementById('musicReviewList').innerHTML = data && data.length > 0 ? data.map(s => `
+                <div class="glass-card">
+                    <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                        <img src="${s.cover_url}" style="width:40px; height:40px; border-radius:8px;">
+                        <b>${s.title}</b>
+                    </div>
+                    <audio src="${s.audio_src}" controls style="width:100%; height:30px; filter:invert(1);"></audio>
+                    <div style="display:flex; gap:8px; margin-top:12px;">
+                        ${status==='pending'?`<button class="btn btn-acc" style="flex:1" onclick="upM('${s.id}','approved')">ACC</button>`:''}
+                        <button class="btn btn-rej" style="flex:1" onclick="upM('${s.id}','rejected')">${status==='pending'?'REJ':'TAKEDOWN'}</button>
+                    </div>
+                </div>
+            `).join('') : "Tidak ada musik.";
+            updateBadges();
+        };
+
+        window.upM = async (id, s) => {
+            if(s === 'rejected') await db.from('songs').delete().eq('id', id);
+            else await db.from('songs').update({ status: 'approved' }).eq('id', id);
+            loadMusic('pending');
+        };
+
+        window.approveAll = async (table) => {
+            if(!confirm("Yakin ingin ACC semua status pending?")) return;
+            await db.from(table).update({ status: 'approved' }).eq('status', 'pending');
+            table === 'posts' ? loadPosts('pending') : loadMusic('pending');
+        };
+
+        async function updateStats() {
+            const { data } = await db.from('profiles').select('coins');
+            document.getElementById('s-users').innerText = data ? data.length : 0;
+            document.getElementById('s-coins').innerText = data ? data.reduce((a,b) => a + (b.coins || 0), 0) : 0;
+            checkMaintenance();
+            updateBadges();
+        }
+
+        async function updateBadges() {
+            const [p, m, w] = await Promise.all([
+                db.from('posts').select('*', {count:'exact', head:true}).eq('status','pending'),
+                db.from('songs').select('*', {count:'exact', head:true}).eq('status','pending'),
+                db.from('withdraw_requests').select('*', {count:'exact', head:true}).eq('status','pending')
+            ]);
+            document.getElementById('badge-posts').innerText = p.count || 0;
+            document.getElementById('badge-posts').style.display = p.count > 0 ? 'inline' : 'none';
+            document.getElementById('badge-music').innerText = m.count || 0;
+            document.getElementById('badge-music').style.display = m.count > 0 ? 'inline' : 'none';
+            document.getElementById('badge-wd').innerText = w.count || 0;
+            document.getElementById('badge-wd').style.display = w.count > 0 ? 'inline' : 'none';
+        }
+
+        updateStats();
+        setInterval(updateBadges, 15000);
+    </script>
+</body>
+</html>

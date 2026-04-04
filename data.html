@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil - Hope Music</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+    :root { 
+        --bg-main: #ffffff; 
+        --bg-secondary: #f8f9fa; 
+        --primary-blue: #007bff; 
+        --light-blue-bg: #e7f3ff; 
+        --text-dark: #1c1e21; 
+        --text-secondary: #65676b; 
+        --border-color: #e4e6eb; 
+    }
+    
+    body { 
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+        margin: 0; 
+        background: var(--bg-main); 
+        color: var(--text-dark); 
+        padding-bottom: 50px; 
+    }
+
+    .top-nav { 
+        display: flex; 
+        justify-content: space-between; 
+        padding: 12px 16px; 
+        align-items: center; 
+        border-bottom: 1px solid var(--border-color); 
+        position: sticky; 
+        top: 0; 
+        background: rgba(255, 255, 255, 0.95); 
+        backdrop-filter: blur(10px); 
+        z-index: 100; 
+    }
+    
+    .profile-container { 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        padding: 30px 20px; 
+        background: var(--bg-main);
+    }
+
+    .avatar-box { 
+        width: 100px; 
+        height: 100px; 
+        border-radius: 50%; 
+        overflow: hidden; 
+        background: #fff; 
+        border: 2px solid var(--primary-blue); 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+        margin-bottom: 15px; 
+        padding: 3px; 
+    }
+    .avatar-box img { 
+        width: 100%; 
+        height: 100%; 
+        border-radius: 50%; 
+        object-fit: cover; 
+    }
+
+    .u-name-wrapper { display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .u-name { font-size: 20px; font-weight: 700; color: #050505; }
+    .u-handle { font-size: 14px; color: var(--text-secondary); display: block; text-align: center; margin-top: 2px; margin-bottom: 20px;}
+
+    .stats { 
+        display: flex; 
+        width: 100%; 
+        max-width: 350px;
+        justify-content: space-around; 
+        border-top: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color);
+        padding: 15px 0;
+        margin-bottom: 25px;
+    }
+    .stat-item { text-align: center; flex: 1; }
+    .stat-val { font-weight: 800; font-size: 18px; color: var(--text-dark); display: block; }
+    .stat-lbl { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+
+    .bio-text { 
+        width: 90%; 
+        max-width: 400px;
+        text-align: center; 
+        font-size: 14px; 
+        line-height: 1.5; 
+        margin-bottom: 25px; 
+        color: #4b4b4b; 
+    }
+
+    .btn-group { display: flex; width: 100%; max-width: 400px; gap: 10px; justify-content: center; }
+    .btn { 
+        flex: 1;
+        padding: 10px 0; 
+        border: none; 
+        border-radius: 8px; 
+        background: var(--light-blue-bg); 
+        color: var(--primary-blue); 
+        font-weight: 600; 
+        font-size: 14px; 
+        cursor: pointer; 
+        transition: 0.2s;
+    }
+    .btn:active { opacity: 0.8; }
+    .btn-follow { background: var(--primary-blue); color: #fff; }
+
+    .tabs { 
+        display: flex; 
+        border-top: 1px solid var(--border-color); 
+        border-bottom: 1px solid var(--border-color);
+        background: #fff; 
+        position: sticky;
+        top: 50px; 
+        z-index: 90;
+    }
+    .tab { 
+        flex: 1; 
+        display: flex; 
+        justify-content: center; 
+        padding: 15px; 
+        cursor: pointer; 
+        transition: 0.2s;
+        color: var(--text-secondary); 
+        position: relative;
+    }
+    .tab.active { color: var(--primary-blue); }
+    .tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: var(--primary-blue);
+    }
+    .tab svg { width: 22px; height: 22px; }
+
+    .photo-grid { 
+        display: grid; 
+        grid-template-columns: repeat(3, 1fr); 
+        gap: 1px; 
+        padding: 1px;
+        background: #fff; 
+    }
+    .grid-item { 
+        aspect-ratio: 1 / 1; 
+        background: #f1f1f1; 
+        overflow: hidden; 
+    }
+    .grid-item img { 
+        width: 100%; 
+        height: 100%; 
+        object-fit: cover; 
+    }
+
+    #bio-modal { 
+        display: none; 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%; 
+        background: rgba(0, 0, 0, 0.6); 
+        backdrop-filter: blur(4px); 
+        z-index: 1000; 
+        align-items: center; 
+        justify-content: center; 
+    }
+    .modal-content { 
+        background: #fff; 
+        width: 88%; 
+        max-width: 420px; 
+        padding: 24px; 
+        border-radius: 16px; 
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+        position: relative;
+    }
+    .modal-content h3 { margin: 0 0 16px 0; font-size: 18px; font-weight: 700; color: #1c1e21; }
+
+    #new-bio-input { 
+        width: 100%; 
+        height: 140px; 
+        padding: 15px; 
+        border: 1px solid #e4e6eb; 
+        border-radius: 12px; 
+        background: #f9f9f9;
+        resize: none; 
+        box-sizing: border-box; 
+        font-family: inherit;
+        font-size: 15px;
+        color: #1c1e21;
+        transition: border-color 0.2s;
+    }
+    #new-bio-input:focus { outline: none; border-color: #007bff; background: #fff; }
+
+    .skeleton-loader {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        background: linear-gradient(90deg, #f0f2f5 25%, #e7f3ff 50%, #f0f2f5 75%);
+        background-size: 200% 100%;
+        animation: skeleton-loading 1.5s infinite linear;
+        border-radius: 4px;
+    }
+    @keyframes skeleton-loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    .loading-wrapper {
+        grid-column: span 3;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1px;
+        width: 100%;
+    }
+    .no-posts { 
+        grid-column: span 3; 
+        display: flex;
+        flex-direction: column;
+        align-items: center; 
+        justify-content: center;
+        padding: 100px 20px; 
+        color: #8e8e8e; 
+        text-align: center;
+    }
+    .no-posts svg { width: 64px; height: 64px; margin-bottom: 16px; color: #dbdbdb; }
+    .no-posts p { margin: 0; font-size: 15px; font-weight: 500; }
+
+    .toast {
+        position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8); color: white; padding: 10px 20px;
+        border-radius: 100px; font-size: 13px; z-index: 2000; display: none;
+        animation: fadeInOut 2s ease;
+    }
+    @keyframes fadeInOut {
+        0% { opacity: 0; bottom: 60px; }
+        20% { opacity: 1; bottom: 80px; }
+        80% { opacity: 1; bottom: 80px; }
+        100% { opacity: 0; bottom: 60px; }
+    }
+
+    .modal-overlay { 
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); z-index: 1001; 
+        align-items: center; justify-content: center; 
+    }
+    .modal-content.qrcode-modal { 
+        background: #fff; width: 82%; max-width: 300px; padding: 16px; 
+        border-radius: 24px; box-shadow: 0 15px 40px rgba(0,0,0,0.3); text-align: center;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .modal-header h3 { margin: 0; font-size: 16px; font-weight: 700; }
+    .share-card { background: #f8f9fa; padding: 15px; border-radius: 20px; border: 1px solid #e4e6eb; margin-bottom: 15px; }
+    .avatar-box-mini { width: 45px; height: 45px; border-radius: 50%; overflow: hidden; margin: 0 auto 8px; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    #share-handle { font-weight: 700; font-size: 14px; margin: 0 0 12px 0; color: #1c1e21; }
+    #qrcode-container { display: flex; justify-content: center; align-items: center; background: #fff; padding: 8px; border-radius: 12px; margin: 0 auto 10px; width: 130px; height: 130px; box-sizing: border-box; }
+    .share-hint { font-size: 10px; color: #8e8e8e; line-height: 1.4; margin: 0; }
+
+    .sidebar-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.4); z-index: 1999; display: none; opacity: 0;
+        transition: opacity 0.3s ease; cursor: pointer;
+    }
+    .sidebar {
+        position: fixed; top: 0; right: -100%; width: 75%; max-width: 300px; height: 100%;
+        background: #ffffff; z-index: 2000; transition: right 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+        display: flex; flex-direction: column; overflow-y: auto; box-shadow: -5px 0 20px rgba(0,0,0,0.05);
+    }
+    .sidebar.open { right: 0; }
+    .sidebar-search-container { padding: 20px 16px 10px; }
+    .sidebar-search { background: #f1f1f2; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; }
+    .sidebar-search input { border: none; background: transparent; outline: none; width: 100%; font-size: 15px; color: #1c1e21; }
+    .menu-category-label { padding: 20px 16px 8px; font-size: 13px; font-weight: 600; color: #8a8b91; }
+    .menu-item-tiktok { display: flex; align-items: center; padding: 12px 16px; cursor: pointer; transition: background 0.2s; }
+    .menu-item-tiktok:active { background: #f8f8f8; }
+    .menu-item-tiktok .icon-wrapper { width: 28px; display: flex; align-items: center; color: #1c1e21; }
+    .menu-item-tiktok .menu-text { flex: 1; font-size: 16px; font-weight: 500; color: #1c1e21; margin-left: 10px; }
+    .menu-item-tiktok .arrow-right { color: #bdbebf; font-size: 18px; }
+    
+    * { -webkit-tap-highlight-color: transparent; outline: none; }
+    .menu-item-tiktok, .btn, .tab, button { -webkit-tap-highlight-color: rgba(0,0,0,0); user-select: none; }
+</style>
+</head>
+<body>
+
+<div id="bio-modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0;">Ubah Bio</h3>
+        <textarea id="new-bio-input"></textarea>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+            <button onclick="closeBioModal()" style="padding:8px 16px; border:none; background:#f1f1f2; border-radius:6px; cursor:pointer;">Batal</button>
+            <button id="save-bio-btn" onclick="saveBio(event)" style="padding:8px 16px; border:none; background:#007bff; color:#fff; border-radius:6px; cursor:pointer;">Simpan</button>
+        </div>
+    </div>
+</div>
+
+<div class="top-nav">
+    <div onclick="goBack()" style="cursor:pointer; font-size: 16px; font-weight: 600; padding: 5px;">Back</div>
+    <div id="header-name" style="font-weight: bold;">Profil</div>
+    <div onclick="toggleSidebar()" style="cursor:pointer; padding: 5px; display: flex; align-items: center;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </div>
+</div>
+
+<div class="profile-container">
+    <div class="avatar-box"><img id="view-avatar" src="https://via.placeholder.com/150"></div>
+    <div class="user-meta">
+        <div class="u-name-wrapper">
+            <span class="u-name" id="view-display-name">Memuat...</span>
+            <div id="badge-container"></div>
+        </div>
+        <span class="u-handle" id="view-username">@handle</span>
+    </div>
+    <div class="stats">
+        <div class="stat-item"><span class="stat-val" id="stat-following">0</span><span class="stat-lbl">Following</span></div>
+        <div class="stat-item"><span class="stat-val" id="stat-followers">0</span><span class="stat-lbl">Followers</span></div>
+        <div class="stat-item"><span class="stat-val" id="stat-likes">0</span><span class="stat-lbl">Likes</span></div>
+    </div>
+    <div class="bio-text" id="view-bio">Memuat bio...</div>
+    <div class="btn-group" id="action-buttons"></div>
+</div>
+
+<div id="share-modal" class="modal-overlay">
+    <div class="modal-content qrcode-modal">
+        <div class="modal-header">
+            <h3>Bagikan Profil</h3>
+            <button class="close-modal-btn" style="border:none; background:none; font-size:20px; cursor:pointer;" onclick="closeShareModal()">&times;</button>
+        </div>
+        <div class="share-card">
+            <div class="avatar-box-mini">
+                <img id="share-avatar" src="">
+            </div>
+            <p id="share-handle">@handle</p>
+            <div id="qrcode-container"></div>
+            <p class="share-hint">Scan kode ini untuk membuka profil saya di HopeHype</p>
+        </div>
+        <button class="btn" style="background:var(--primary-blue); color:#fff; width:100%;" onclick="copyProfileLink()">Salin Link Profil</button>
+    </div>
+</div>
+
+<div class="tabs">
+    <div class="tab active" onclick="switchTab(this, 'foto')">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20H5V4H10V20ZM12 20H19V11H12V20ZM12 9H19V4H12V9Z"/></svg>
+    </div>
+    <div class="tab" onclick="switchTab(this, 'musik')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
+        </svg>
+    </div>
+    <div class="tab" onclick="switchTab(this, 'like')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </div>
+</div>
+
+<div class="photo-grid" id="post-container"></div>
+
+<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<div id="mySidebar" class="sidebar">
+    <div class="sidebar-search-container">
+        <div class="sidebar-search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a8b91" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" placeholder="Cari">
+        </div>
+    </div>
+
+    <div class="menu-category-label">Aset</div>
+    <div class="menu-item-tiktok" onclick="window.location.href='saldo.html'">
+        <div class="icon-wrapper">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+        </div>
+        <div class="menu-text">Saldo</div>
+        <div class="arrow-right">›</div>
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid #f1f1f2; margin: 10px 16px;">
+
+    <div class="menu-category-label">Alat pribadi</div>
+    <div class="menu-item-tiktok" onclick="shareProfile(); toggleSidebar();">
+        <div class="icon-wrapper">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="7" y="7" width="3" height="3"></rect><rect x="14" y="7" width="3" height="3"></rect><rect x="7" y="14" width="3" height="3"></rect></svg>
+        </div>
+        <div class="menu-text">Kode QR Anda</div>
+        <div class="arrow-right">›</div>
+    </div>
+</div>
+
+<script>
+    const SB_URL = 'https://hqetnqnvmdxdgfnnluew.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxZXRucW52bWR4ZGdmbm5sdWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MzUyODIsImV4cCI6MjA4NzMxMTI4Mn0.Cr9lDBZMqfeONi1dfyFzHpBtawBzZTQLBEWKmPJVAOA';
+    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+    let myId = null; 
+    let targetName = ""; 
+    let targetProfileId = null;
+
+    // [FIX EGRESS] TAB CACHE: Simpan data post biar gak nembak ulang pas ganti tab
+    const tabCache = { foto: null, musik: null, like: null };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    targetProfileId = urlParams.get('id'); 
+    const userParam = urlParams.get('user'); 
+
+    function getUserBadge(role) {
+      if (!role) return ""; 
+      let badge = "";
+      if (role.includes("admin")) badge += `<span class="admin-badge" style="background: #ff4757; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-left: 5px; display: inline-flex; align-items: center; vertical-align: middle; line-height: 1; font-weight: bold; height: 16px;">🛡 Dev</span>`;
+      if (role.includes("verified")) badge += `<span class="verified-badge" style="margin-left:5px;"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; display:inline-block;"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+      const crowBadges = { crown1: "asets/png/crown1.png", crown2: "asets/png/crown2.png", crown3: "asets/png/crown3.png" };
+      Object.keys(crowBadges).forEach(key => { if (role.includes(key)) badge += `<img src="${crowBadges[key]}" style="width:18px; height:18px; margin-left:5px; vertical-align:middle; object-fit:contain; display:inline-block;" alt="${key}">`; });
+      return badge;
+    }
+
+    async function loadProfile() {
+        try {
+            const { data } = await supabaseClient.auth.getUser();
+            const user = data?.user;
+            myId = user ? user.id : null; 
+            let searchParam = userParam; 
+
+            // Cek cache buat profile sendiri
+            if (!searchParam && !targetProfileId && myId) {
+                const cachedProfileStr = sessionStorage.getItem(`hh_profile_${myId}`);
+                if (cachedProfileStr) {
+                    searchParam = JSON.parse(cachedProfileStr).username;
+                } else {
+                    const { data: myProf } = await supabaseClient.from('profiles').select('username').eq('id', myId).maybeSingle();
+                    searchParam = myProf?.username;
+                }
+            }
+
+            targetName = searchParam || "hiilinda";
+            let query = supabaseClient.from('profiles').select('id, username, bio, avatar_url, role');
+
+            if (targetProfileId) query = query.eq('id', targetProfileId);
+            else if (userParam) query = query.eq('username', userParam);
+            else query = query.eq('username', targetName);
+
+            const { data: profile, error } = await query.single();
+
+            if (!profile || error) {
+                document.getElementById('view-display-name').innerText = "User Tidak Ditemukan";
+                return;
+            }
+
+            targetProfileId = profile.id;
+            targetName = profile.username;
+
+            document.getElementById('header-name').innerText = profile.username;
+            document.getElementById('view-display-name').innerText = profile.username;
+            document.getElementById('view-username').innerText = '@' + profile.username.toLowerCase();
+            document.getElementById('view-bio').innerText = profile.bio || 'Belum ada bio.';
+            if (profile.avatar_url) document.getElementById('view-avatar').src = profile.avatar_url;
+
+            const badgeCont = document.getElementById('badge-container');
+            if (badgeCont) badgeCont.innerHTML = getUserBadge(profile.role);
+
+            initButtons(profile.id); // Panggil fungsi init yang baru (Egress Fix)
+            updateStats(profile.id, profile.username);
+            loadPosts('foto'); 
+
+        } catch (err) { console.error("Load Error:", err); }
+    }
+
+    async function updateStats(tId, tUsername) {
+        try {
+            const { count: fers } = await supabaseClient.from('followers').select('*', { count: 'exact', head: true }).eq('following_id', tId);
+            const { count: fing } = await supabaseClient.from('followers').select('*', { count: 'exact', head: true }).eq('follower_id', tId);
+            
+            // [EGRESS WARNING] Supabase gak bisa COUNT relasi ganda dengan mudah tanpa RPC, jadi logic lo ini tetep dipertahankan tapi bakal jalan 1x aja per halaman.
+            const { data: myPosts } = await supabaseClient.from('posts').select('id').eq('name', tUsername); 
+            let totalLikes = 0;
+            if (myPosts && myPosts.length > 0) {
+                const postIds = myPosts.map(p => p.id);
+                const { count: lks } = await supabaseClient.from('likes').select('*', { count: 'exact', head: true }).in('post_id', postIds);
+                totalLikes = lks || 0;
+            }
+
+            if (document.getElementById('stat-followers')) document.getElementById('stat-followers').innerText = fers || 0;
+            if (document.getElementById('stat-following')) document.getElementById('stat-following').innerText = fing || 0;
+            if (document.getElementById('stat-likes')) document.getElementById('stat-likes').innerText = totalLikes;
+        } catch (err) { console.error("Error updating stats:", err); }
+    }
+
+    async function loadPosts(type) {
+        const container = document.getElementById('post-container');
+        if (!container) return;
+        
+        // [FIX EGRESS] Cek Cache dulu. Kalau data udah ada, langsung tempel! Gak usah query ulang.
+        if (tabCache[type]) {
+            renderGrid(tabCache[type], container, type);
+            return;
+        }
+
+        container.innerHTML = `<div class="loading-wrapper"><div class="skeleton-loader"></div><div class="skeleton-loader"></div><div class="skeleton-loader"></div><div class="skeleton-loader"></div><div class="skeleton-loader"></div><div class="skeleton-loader"></div></div>`;
+        
+        try {
+            let posts = [];
+            
+            if (type === 'foto') {
+                const { data, error } = await supabaseClient.from('posts').select('id, image_url, created_at').eq('creator_id', targetProfileId).eq('status', 'approved').order('created_at', { ascending: false });
+                if (error) throw error;
+                posts = data || [];
+            } else if (type === 'musik') {
+                const { data, error } = await supabaseClient.from('songs').select('id, cover_url').eq('artist', targetName).order('id', { ascending: false }); 
+                if (error) throw error;
+                posts = data ? data.map(song => ({ id: song.id, image_url: song.cover_url })) : [];
+            } else if (type === 'like') {
+                const { data: rels, error: relError } = await supabaseClient.from('likes').select('post_id').eq('user_id', targetProfileId);
+                if (relError) throw relError;
+                if (rels && rels.length > 0) {
+                    const postIds = rels.map(r => r.post_id).filter(id => id !== null && id !== undefined && id !== 'null' && id !== '');
+                    if (postIds.length > 0) {
+                        const { data: pData, error: pError } = await supabaseClient.from('posts').select('id, image_url').in('id', postIds).eq('status', 'approved'); 
+                        if (pError) throw pError;
+                        posts = pData || [];
+                    }
+                }
+            }
+            
+            // Simpan hasil ke cache biar gak nembak API lagi kalau diklik
+            tabCache[type] = posts;
+            renderGrid(posts, container, type);
+            
+        } catch (err) {
+            console.error("Gagal memuat postingan:", err.message);
+            container.innerHTML = '<div class="no-posts"><p>Gagal memuat konten.</p></div>';
+        }
+    }
+
+    function renderGrid(data, container, type) {
+        if (data && data.length > 0) {
+            container.innerHTML = data.map(p => {
+                let targetPage = (type === 'musik') ? 'music.html' : 'post.html';
+                return `<div class="grid-item"><a href="${targetPage}?id=${p.id}"><img src="${p.image_url}" loading="lazy"></a></div>`;
+            }).join('');
+        } else {
+            container.innerHTML = `<div class="no-posts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg><p>Belum ada postingan</p></div>`;
+        }
+    }
+
+    // [FIX EGRESS] Pisahkan Fungsi Render & Follow
+    async function initButtons(targetId) {
+        const btnBox = document.getElementById('action-buttons');
+        if (myId === targetId) {
+            btnBox.innerHTML = `<button class="btn" onclick="editBio()">Edit</button><button class="btn" onclick="shareProfile()">Share</button>`;
+        } else {
+            if (!myId) {
+                btnBox.innerHTML = `<button class="btn btn-follow" onclick="alert('Silakan login')">Ikuti</button>`;
+                return;
+            }
+            // Cek database 1 kali doang
+            const { data: isFollowing } = await supabaseClient.from('followers').select('id').eq('follower_id', myId).eq('following_id', targetId).maybeSingle();
+            renderFollowButton(targetId, !!isFollowing);
+        }
+    }
+
+    function renderFollowButton(targetId, isFollowing) {
+        const btnBox = document.getElementById('action-buttons');
+        btnBox.innerHTML = isFollowing 
+            ? `<button class="btn" onclick="toggleFollow('${targetId}', true)">Mengikuti</button>` 
+            : `<button class="btn btn-follow" onclick="toggleFollow('${targetId}', false)">Ikuti</button>`;
+    }
+
+    async function toggleFollow(tId, isCurrentlyFollowing) {
+        const followerEl = document.getElementById('stat-followers');
+        let currentFollowers = parseInt(followerEl.innerText) || 0;
+
+        if (isCurrentlyFollowing) {
+            // [FIX EGRESS: Optimistic UI] Ubah di layar langsung, background kirim request
+            renderFollowButton(tId, false);
+            followerEl.innerText = Math.max(0, currentFollowers - 1);
+            showToast("Berhenti mengikuti");
+
+            await supabaseClient.from('followers').delete().eq('follower_id', myId).eq('following_id', tId);
+        } else {
+            // [FIX EGRESS: Optimistic UI] 
+            renderFollowButton(tId, true);
+            followerEl.innerText = currentFollowers + 1;
+            showToast("Mulai mengikuti");
+
+            const { error } = await supabaseClient.from('followers').insert([{ follower_id: myId, following_id: tId }]);
+            if (!error) {
+                const channel = supabaseClient.channel('user-notifications');
+                channel.send({ type: 'broadcast', event: 'new-follower', payload: { targetId: tId } });
+            }
+        }
+        // Gak pake updateStats(tId, targetName) lagi karena angkanya udah kita ganti otomatis di atas!
+    }
+
+    function switchTab(el, type) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        el.classList.add('active');
+        loadPosts(type);
+    }
+
+    function editBio() {
+        const currentBio = document.getElementById('view-bio').innerText;
+        document.getElementById('new-bio-input').value = (currentBio === 'Belum ada bio.' || currentBio === 'Memuat bio...') ? '' : currentBio;
+        document.getElementById('bio-modal').style.display = 'flex';
+    }
+    function closeBioModal() { document.getElementById('bio-modal').style.display = 'none'; }
+
+    async function saveBio(e) {
+        const newBio = document.getElementById('new-bio-input').value;
+        const btn = e.target;
+        btn.disabled = true;
+        try {
+            const { error } = await supabaseClient.from('profiles').update({ bio: newBio }).eq('id', myId);
+            if (error) throw error;
+            document.getElementById('view-bio').innerText = newBio || 'Belum ada bio.';
+            closeBioModal();
+        } catch (err) { alert(err.message); }
+        btn.disabled = false;
+    }
+
+    let currentQRCode = null;
+    function closeShareModal() {
+        document.getElementById('share-modal').style.display = 'none';
+        if (currentQRCode) { document.getElementById('qrcode-container').innerHTML = ""; currentQRCode = null; }
+    }
+
+    function shareProfile() {
+        const modal = document.getElementById('share-modal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        const viewAvatar = document.getElementById('view-avatar'); 
+        const viewDisplayName = document.getElementById('view-display-name'); 
+        const shareAvatar = document.getElementById('share-avatar'); 
+        const shareHandle = document.getElementById('share-handle'); 
+        if(viewAvatar && shareAvatar) shareAvatar.src = viewAvatar.src; 
+        if(viewDisplayName && shareHandle) shareHandle.textContent = '@' + viewDisplayName.textContent.replace(/\s/g, '').toLowerCase(); 
+        const profileUrl = window.location.href; 
+        const qrcodeContainer = document.getElementById('qrcode-container');
+        if (!currentQRCode) {
+            qrcodeContainer.innerHTML = ""; 
+            currentQRCode = new QRCode(qrcodeContainer, { text: profileUrl, width: 140, height: 140, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
+        }
+    }
+
+    function copyProfileLink() {
+        navigator.clipboard.writeText(window.location.href);
+        showToast("Link profil disalin!");
+    }
+
+    loadProfile();
+
+    function goBack() {
+        if (document.referrer !== "") window.history.back();
+        else window.location.href = 'index.html'; 
+    }
+
+    function showToast(msg) {
+        let toast = document.getElementById('toast-msg');
+        if (!toast) {
+            toast = document.createElement('div'); toast.id = 'toast-msg'; toast.className = 'toast'; document.body.appendChild(toast);
+        }
+        toast.innerText = msg; toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2000);
+    }
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('mySidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (!sidebar || !overlay) return;
+        if (sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open'); overlay.style.opacity = '0'; setTimeout(() => { overlay.style.display = 'none'; }, 300);
+        } else {
+            overlay.style.display = 'block'; setTimeout(() => { overlay.style.opacity = '1'; sidebar.classList.add('open'); }, 10);
+        }
+    }
+</script>
+</body>
+</html>

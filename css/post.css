@@ -1,0 +1,2160 @@
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+/*search-wrapper*/
+body{ 
+  font-family:'Poppins', sans-serif; 
+  background:#121212; 
+  color:#e0e0e0; 
+}
+.search-wrapper{
+  position:sticky;
+  top:0;
+  z-index:999;
+  padding:15px 20px;
+  display:flex;
+  justify-content:center;
+  background:transparent;
+}
+.brutal-input-container{
+  position:relative;
+  width:100%;
+  max-width:270px;
+}
+
+.brutal-input{
+  width:100%;
+  height:60px;
+  padding:12px;
+  font-size:18px;
+  font-family:"Courier New", monospace;
+  color:#000;
+  background:#fff;
+  border:4px solid #000;
+  outline:none;
+  transition:0.3s ease;
+  box-shadow:8px 8px 0 #000;
+}
+
+/* Hover */
+.brutal-input:hover{
+  transform:translate(-4px,-4px);
+  box-shadow:12px 12px 0 #000;
+}
+
+/* Focus */
+.brutal-input:focus{
+  background:#000;
+  color:#fff;
+  border-color:#fff;
+  animation:shake 0.5s ease-in-out;
+}
+
+/* Typing glitch */
+.brutal-input:not(:placeholder-shown){
+  animation:glitch 0.7s linear infinite;
+  font-weight:bold;
+  letter-spacing:1px;
+}
+
+/* Cursor line */
+.brutal-input-container::after{
+  content:"|";
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  animation:blink 0.7s step-end infinite;
+}
+
+/* Animations */
+@keyframes blink{
+  50%{opacity:0;}
+}
+
+@keyframes shake{
+  0%,100%{transform:translateX(0);}
+  25%{transform:translateX(-5px);}
+  75%{transform:translateX(5px);}
+}
+
+@keyframes glitch{
+  0%{transform:none;}
+  20%{transform:skew(-1deg);}
+  40%{transform:skew(1deg);}
+  60%{transform:skew(-0.5deg);}
+  80%{transform:skew(0.5deg);}
+  100%{transform:none;}
+}
+
+/*POST*/
+.gallery{ 
+  max-width:420px; 
+  margin:auto; 
+  padding:10px 20px 40px; 
+}
+/* ======CARD POST======= */
+.card{ 
+  background:#1e1e1e; 
+  border-radius:16px; 
+  margin-bottom:25px; 
+  overflow:hidden; 
+  box-shadow:0 4px 15px rgba(0,0,0,0.6);
+  border:1px solid #2c2c2c;
+  display:flex;
+  flex-direction:column;
+  transition:0.2s ease;
+}
+
+.card:hover{
+  transform:translateY(-3px);
+}
+
+
+/* ===========IMAGE =========== */
+
+/* Container gambar */
+.slider {
+  position: relative;
+  width: 100%;
+  background: #252525; /* Warna dasar kalau gambar telat muat */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Gambar utama */
+.slider img {
+  width: 100%;
+  height: auto; /* Biar tinggi ngikutin lebar asli gambar */
+  display: block;
+  object-fit: cover; /* Menjaga proporsi kalau kamu tentukan height tetap */
+}
+
+/* Watermark diperkecil dan nempel di pojok kiri atas */
+.watermark-overlay {
+  position: absolute;
+  top: 5px;          /* Jarak tipis dari atas */
+  left: 5px;         /* Jarak tipis dari kiri */
+  width: 90px;       /* Ukuran diperkecil (sebelumnya ~140px) */
+  height: auto;
+  opacity: 0.8;      /* Opasitas pas agar tidak terlalu mencolok */
+  pointer-events: none; /* Biar tetap bisa klik/long press gambarnya */
+  z-index: 10;       /* Pastikan di atas gambar utama */
+  
+  /* Bayangan halus biar kalau fotonya putih tetap kontras */
+  filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.4));
+}
+
+.watermark-overlay img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ===========OVERLAY =========== */
+.overlay{ 
+  padding:15px; 
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+
+/* ================= NAME ================= */
+
+.overlay h2{ 
+  font-size:16px; 
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:#fff;
+}
+
+
+/* ================= VERIFIED ================= */
+
+.verified{
+  display:flex;
+  align-items:center;
+}
+
+.verified-icon{
+  width:16px;
+  height:16px;
+}
+
+.verified-icon circle{
+  fill:#1DA1F2;
+}
+
+.verified-icon path{
+  stroke:#fff;
+  stroke-width:3;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  fill:none;
+}
+
+
+/* ================= BIO ================= */
+
+.overlay p{ 
+  font-size:14px; 
+  color:#bbb;
+}
+
+
+/* ================= STATS ================= */
+
+.stats{ 
+  display:flex; 
+  gap:15px;
+  font-size:12px; 
+  color:#888;
+}
+
+
+/* ================= ACTIONS ================= */
+
+.actions{ 
+  display:flex; 
+  align-items:center;
+  justify-content:space-between;
+  margin-top:10px; 
+}
+
+.primary{ 
+  padding:7px 14px; 
+  border:none; 
+  border-radius:8px; 
+  background:#0095f6; 
+  color:#fff; 
+  font-size:13px;
+  text-decoration:none; 
+  cursor:pointer; 
+  transition:0.2s;
+}
+
+.primary:hover{
+  background:#0b84e3;
+}
+
+
+/* ================= ICON BUTTONS ================= */
+
+.icon-btn{
+  background:none;
+  border:none;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  cursor:pointer;
+}
+
+.icon{
+  width:22px;
+  height:22px;
+  fill:#e0e0e0;
+  transition:0.2s;
+}
+
+.icon-btn.liked .icon {
+  fill: #ff2e63;
+}
+}
+
+.like-count,
+.comment-count{
+  font-size:13px;
+  color:#e0e0e0;
+}
+.icon{
+  width:22px;
+  height:22px;
+  fill:currentColor;
+}
+
+.icon-btn{
+  background:none;
+  border:none;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  cursor:pointer;
+  font-size:14px;
+  transition:0.2s;
+}
+
+.icon-btn:hover{
+  transform:scale(1.1);
+  opacity:0.8;
+}
+ 
+/* =========================
+   COMMENT SHEET STYLE
+========================= */
+#commentModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .25s ease, visibility .25s ease;
+}
+
+#commentModal.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#commentModal .comment-box {
+  width: 100%;
+  max-width: 500px;
+  height: 78vh;
+  background: #111;
+  border-radius: 22px 22px 0 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform .35s ease;
+  box-shadow: 0 -12px 30px rgba(0,0,0,.4);
+}
+
+#commentModal.active .comment-box {
+  transform: translateY(0);
+}
+
+#commentModal .comment-box::before {
+  content: "";
+  width: 48px;
+  height: 5px;
+  background: rgba(255,255,255,.25);
+  border-radius: 999px;
+  margin: 10px auto 8px;
+  display: block;
+}
+
+#commentModal .comment-header {
+  color: #fff;
+  text-align: center;
+  font-weight: 700;
+  padding: 10px 16px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  position: relative;
+}
+
+#commentModal .comment-close {
+  position: absolute;
+  right: 14px;
+  top: 6px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+#commentModal .comment-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px 16px;
+}
+
+/* Thread */
+.comment-thread {
+  margin-bottom: 16px;
+}
+
+/* Komentar utama / reply */
+.comment-item {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.comment-item.reply {
+  margin-left: 42px;
+  opacity: 0.95;
+}
+
+.comment-left {
+  flex-shrink: 0;
+}
+
+.comment-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.comment-item.reply .comment-avatar {
+  width: 30px;
+  height: 30px;
+}
+
+.comment-right {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-topline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.comment-username {
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.comment-time {
+  color: #8e8e8e;
+  font-size: 12px;
+}
+
+.comment-text {
+  color: #f1f1f1;
+  font-size: 14px;
+  line-height: 1.45;
+  margin-top: 2px;
+  word-break: break-word;
+}
+
+.reply-tag {
+  color: #4da3ff;
+  font-weight: 600;
+}
+
+.comment-actions {
+  margin-top: 4px;
+}
+
+.reply-btn {
+  color: #9aa0a6;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.reply-btn:hover {
+  color: #fff;
+}
+
+/* Tombol lihat balasan */
+.view-replies-btn {
+  margin-left: 48px;
+  margin-top: 4px;
+  margin-bottom: 6px;
+  color: #8ab4f8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.reply-group {
+  margin-top: 6px;
+}
+
+/* Input bawah */
+.comment-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  background: #111;
+}
+
+.comment-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: #1d1d1d;
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+}
+
+.comment-input::placeholder {
+  color: #888;
+}
+@keyframes popLike {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+/* From Uiverse.io by micaelgomestavares */ 
+.form {
+  background: transparent;
+  padding: 0;
+  width: 100%;
+}
+
+::placeholder {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.form button {
+  align-self: flex-end;
+}
+
+.flex-column > label {
+  color: #151717;
+  font-weight: 600;
+}
+
+.inputForm {
+  border: 1.5px solid #ecedec;
+  border-radius: 10px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+  transition: 0.2s ease-in-out;
+}
+
+.input {
+  margin-left: 10px;
+  border-radius: 10px;
+  border: none;
+  width: 85%;
+  height: 100%;
+}
+
+.input:focus {
+  outline: none;
+}
+
+.inputForm:focus-within {
+  border: 1.5px solid #2d79f3;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.flex-row > div > label {
+  font-size: 14px;
+  color: black;
+  font-weight: 400;
+}
+
+.span {
+  font-size: 14px;
+  margin-left: 5px;
+  color: #2d79f3;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.button-submit {
+  margin: 20px 0 10px 0;
+  background-color: #151717;
+  border: none;
+  color: white;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 10px;
+  height: 50px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.button-submit:hover {
+  background-color: #252727;
+}
+
+.p {
+  text-align: center;
+  color: black;
+  font-size: 14px;
+  margin: 5px 0;
+}
+
+.btn {
+  margin-top: 10px;
+  width: 100%;
+  height: 50px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 500;
+  gap: 10px;
+  border: 1px solid #ededef;
+  background-color: white;
+  cursor: pointer;
+  transition: 0.2s ease-in-out;
+}
+
+.btn:hover {
+  border: 1px solid #2d79f3;
+  ;
+}
+ 
+/* Popup in */
+#inPopup {
+  position: fixed;     
+  top: 0;
+  left: 0;
+  width: 100vw;         
+  height: 100vh;      
+  background: rgba(0,0,0,0.5); 
+  display: none;        
+  justify-content: center; 
+  align-items: center;     
+  z-index: 9999;      
+}
+#inPopup .popup-content {
+  background: #fff;
+  padding: 25px;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 350px;
+  box-sizing: border-box;
+}
+
+#inPopup .close-popup {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.close-popup {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+/* ================= POPUP IN FIX ================= */
+
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.popup-content {
+  background: #fff;
+  width: 90%;
+  max-width: 360px;
+  padding: 25px;
+  border-radius: 18px;
+  position: relative;
+}
+
+@keyframes popupFade {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.close-popup {
+  position: absolute;
+  top: 12px;
+  right: 15px;
+  font-size: 22px;
+  cursor: pointer;
+}
+/* BUTTON */ 
+.Btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 45px;
+  height: 45px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition-duration: 0.3s;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.199);
+  background-color: white;
+}
+
+/* plus sign */
+.sign {
+  width: 100%;
+  transition-duration: 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sign svg {
+  width: 17px;
+}
+
+.sign svg path {
+  fill: black;
+}
+/* text */
+.text {
+  position: absolute;
+  right: 0%;
+  width: 0%;
+  opacity: 0;
+  color: white;
+  font-size: 1.2em;
+  font-weight: 600;
+  transition-duration: 0.3s;
+}
+/* hover effect on button width */
+.Btn:hover {
+  background-color: blue;
+  width: 125px;
+  border-radius: 40px;
+  transition-duration: 0.3s;
+}
+
+.Btn:hover .sign {
+  width: 30%;
+  transition-duration: 0.3s;
+  padding-left: 20px;
+}
+
+.Btn:hover .sign svg path {
+  fill: white;
+}
+
+/* hover effect button's text */
+.Btn:hover .text {
+  opacity: 1;
+  width: 70%;
+  transition-duration: 0.3s;
+  padding-right: 10px;
+}
+/* button click effect*/
+.Btn:active {
+  transform: translate(2px, 2px);
+}
+/* ========NOTIF SIMPEL ============ */
+#notif {
+  position: fixed;
+  top: 20px;
+  right: -300px; 
+  background-color: #4facfe;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  font-weight: 500;
+  opacity: 0;
+  transition: all 0.4s ease;
+  z-index: 9999;
+}
+
+#notif.show {
+  right: 20px;
+  opacity: 1;
+}
+
+#notif.hide {
+  right: -300px;
+  opacity: 0;
+}
+.comment-item{
+display:flex;
+gap:10px;
+padding:8px;
+align-items:flex-start;
+}
+
+.comment-avatar{
+width:35px;
+height:35px;
+border-radius:50%;
+}
+
+.comment-body{
+display:flex;
+flex-direction:column;
+}
+
+.comment-username{
+font-weight:600;
+font-size:13px;
+color:#fff;
+}
+
+.comment-text {
+  font-size: 14px;
+  color: white;
+}
+.reply-toggle{
+  font-size:13px;
+  color:#aaa;
+  cursor:pointer;
+  margin-top:5px;
+}
+
+.reply-toggle:hover{
+  color:white;
+}
+.comment-item {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  transition: background 0.2s;
+}
+
+.comment-item:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.comment-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.comment-right {
+  flex: 1;
+}
+
+.comment-header {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  gap: 5px;
+}
+
+.comment-text {
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+.reply-tag {
+  color: #888;
+}
+
+.comment-actions {
+  font-size: 12px;
+  color: #888;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.reply {
+  margin-left: 50px; /* indent balasan */
+}
+.admin-badge{
+  font-size:9px;
+  color:white;
+  padding:1px 4px;
+  border-radius:4px;
+  margin-left:4px;
+  font-weight:600;
+  animation: rgbGlow 3s linear infinite;
+}
+
+@keyframes rgbGlow{
+  0%{ background: rgb(255,0,0); }
+  33%{ background: rgb(0,255,0); }
+  66%{ background: rgb(0,0,255); }
+  100%{ background: rgb(255,0,0); }
+}
+.toast-notification {
+  position: fixed;
+  top: 20px;      
+  left: 20px;      
+  background: #4facfe; 
+  color: white;
+  padding: 10px 15px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(-20px); 
+  transition: all 0.3s ease;
+  z-index: 9999;
+}
+
+.toast-notification.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-notification.success {
+  background: #4facfe;
+}
+
+.toast-notification.error {
+  background: #ff4757;
+}
+:root {
+  --bg-black: #000000;
+  --bg-sidebar: #050505;
+  --accent-blue: #00a2ff;
+  --glass-white: rgba(255, 255, 255, 0.1);
+  --border-white: rgba(255, 255, 255, 0.5); /* Garis putih semi-transparan agar tidak kaku */
+}
+
+/* Wrapper Utama - Benar-benar transparan & Rapi */
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  background: transparent; /* Full transparan */
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  gap: 15px;
+}
+
+/* Garis Tiga Putih */
+.menu-toggle {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 25px;
+  height: 25px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.menu-toggle span {
+  display: block;
+  width: 100%;
+  height: 2.5px;
+  background-color: #ffffff;
+  border-radius: 2px;
+}
+
+/* Kotak Search Transparan */
+.brutal-input-container {
+  flex-grow: 1;
+}
+
+.brutal-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.1); /* Putih tipis banget biar kelihatan kaca */
+  border: 2px solid #ffffff; /* Garis kotak putih tegas */
+  padding: 10px 15px;
+  color: #ffffff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 1rem;
+  outline: none;
+  border-radius: 0; /* Tetap kotak (Brutal style) tapi transparan */
+  backdrop-filter: blur(5px); /* Efek blur halus di dalam kotak search */
+  -webkit-backdrop-filter: blur(5px);
+}
+
+/* Placeholder warna putih agak pudar */
+.brutal-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Efek saat diklik - makin terang */
+.brutal-input:focus {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #00a2ff; /* Berubah biru dikit pas ngetik */
+}
+
+/* --- Sidebar Premium --- */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100vh;
+  background: var(--bg-sidebar);
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
+  z-index: 2000;
+  transform: translateX(-100%);
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  padding: 60px 30px;
+  box-sizing: border-box;
+}
+
+.sidebar.active {
+  transform: translateX(0);
+}
+
+.sidebar-logo {
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 5px; /* Jarak huruf lebar ala brand mewah */
+  margin-bottom: 60px;
+  opacity: 0.8;
+}
+
+/* --- Nav Item (Teks Putih + Glow Biru Halus) --- */
+.nav-item {
+  display: block;
+  padding: 12px 0;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 1.1rem;
+  font-weight: 300; /* Font lebih tipis agar estetik */
+  margin-bottom: 20px;
+  transition: 0.4s;
+  opacity: 0.6; /* Agak redup saat tidak aktif */
+}
+
+.nav-item:hover {
+  opacity: 1;
+  color: var(--accent-blue);
+  letter-spacing: 2px; /* Efek teks melebar sedikit saat hover */
+}
+
+.nav-item.active {
+  opacity: 1;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Dot Biru untuk menandakan menu aktif */
+.nav-item.active::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: var(--accent-blue);
+  border-radius: 50%;
+  margin-left: 10px;
+  box-shadow: 0 0 10px var(--accent-blue); /* Efek cahaya biru */
+}
+.comment-username:hover {
+    text-decoration: underline;
+    color: var(--primary-blue);
+}
+.comment-avatar:active {
+    transform: scale(0.95);
+}
+.name {
+    display: flex;
+    align-items: center;
+    gap: 6px; /* Jarak antara nama dan badge */
+    white-space: nowrap; /* Biar gak pindah baris */
+}
+
+.verified {
+    display: inline-flex;
+    flex-shrink: 0; /* Biar badge-nya gak gepeng kalau nama kepanjangan */
+}
+
+/* Biar bio dan rating di bawahnya gak ikutan geser ke samping */
+.overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+/* Container utama untuk tombol */
+.actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Detail di kiri, sisanya di kanan */
+    margin-top: 12px;
+    width: 100%;
+}
+
+/* Grup untuk Like dan Komentar */
+.engagement-group {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+/* Standarisasi tombol ikon */
+.icon-btn {
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 0;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+}
+
+.icon-btn svg {
+    width: 22px;
+    height: 22px;
+    transition: transform 0.2s;
+}
+
+.icon-btn:active svg {
+    transform: scale(0.8); /* Efek membal saat diklik */
+}
+/* =========================
+   TIKTOK STYLE GIFT SHEET
+========================= */
+.gift-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: none;
+}
+
+.gift-sheet.active {
+  display: block;
+}
+
+.gift-sheet-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px);
+}
+
+.gift-sheet-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 72vh;
+  background: #171717;
+  color: #fff;
+  border-radius: 22px 22px 0 0;
+  transform: translateY(100%);
+  transition: transform 0.32s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.4);
+}
+
+.gift-sheet.active .gift-sheet-panel {
+  transform: translateY(0);
+}
+
+/* TOP BAR */
+.gift-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px 10px;
+  font-size: 13px;
+  color: #d5d5d5;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.gift-pin-btn {
+  background: transparent;
+  border: none;
+  color: #ff2d6f;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* TARGET BAR */
+.gift-target-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.gift-target-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.gift-target-label {
+  font-size: 13px;
+  color: #9a9a9a;
+}
+
+.gift-target-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.gift-balance-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #232323;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.coin-icon {
+  font-size: 14px;
+}
+/* Container Utama */
+.gift-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: none; /* Default sembunyi */
+  align-items: flex-end;
+}
+
+.gift-sheet.active {
+  display: flex;
+}
+
+.gift-sheet-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+/* Konten Slide Up */
+.gift-sheet-content {
+  position: relative;
+  width: 100%;
+  background: #181818;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px 20px 0 0;
+  padding: 10px 15px 30px 15px;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  z-index: 10001;
+}
+
+.gift-sheet.active .gift-sheet-content {
+  transform: translateY(0);
+}
+
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
+  margin: 0 auto 15px auto;
+}
+
+.gift-header {
+  display: flex;
+  justify-content: space-between;
+  color: #aaa;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.gift-close-x {
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* Grid & Item */
+.gift-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.gift-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: rgba(255,255,255,0.03);
+  transition: 0.2s;
+}
+
+.gift-item.active {
+  background: rgba(255, 45, 85, 0.1);
+  border-color: #ff2d55;
+}
+
+.gift-img-container {
+  width: 55px;
+  height: 55px;
+  margin-bottom: 5px;
+}
+
+.img-gift {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.gift-name { font-size: 11px; color: #fff; }
+.gift-price { font-size: 12px; color: #ffd700; display: flex; align-items: center; gap: 3px; }
+.img-coin-inline { width: 12px; }
+
+/* Footer */
+.gift-footer {
+  margin-top: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.user-coins-info {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.img-coin-footer { width: 20px; }
+
+.btn-send-gift {
+  background: #ff2d55;
+  color: white;
+  border: none;
+  padding: 10px 30px;
+  border-radius: 25px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-send-gift:disabled { background: #333; color: #666; }
+ 
+/* Efek Cahaya Meledak di Latar */
+.glow-bg {
+    position: absolute;
+    width: 100px; height: 100px;
+    background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,215,0,0) 70%);
+    border-radius: 50%;
+    animation: explodeGlow 2.5s ease-out forwards;
+}
+
+.meriah-text {
+    font-family: 'Inter', sans-serif;
+    font-size: 5rem;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -5px; /* Awalnya rapet banget */
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1;
+    
+    /* Efek Bayangan Cinematic */
+    filter: drop-shadow(0 0 20px rgba(255,255,255,0.5));
+    
+    /* Animasi Teks Meledak */
+    animation: cinematicText 2.5s cubic-bezier(0.15, 0.85, 0.35, 1) forwards;
+}
+
+/* Animasi Cahaya Latar */
+@keyframes explodeGlow {
+    0% { transform: scale(0); opacity: 1; filter: blur(0px); }
+    30% { transform: scale(30); opacity: 0.5; filter: blur(50px); }
+    100% { transform: scale(50); opacity: 0; filter: blur(100px); }
+}
+
+/* Animasi Teks Utama */
+@keyframes cinematicText {
+    0% { 
+        transform: scale(0.5); 
+        letter-spacing: -20px; 
+        opacity: 0; 
+        filter: blur(20px) brightness(5);
+    }
+    15% { 
+        opacity: 1; 
+        filter: blur(0px) brightness(1.5);
+    }
+    25% {
+        letter-spacing: 15px; /* Hurufnya merenggang drastis */
+    }
+    80% { 
+        opacity: 1; 
+        transform: scale(1.1);
+        letter-spacing: 20px;
+        filter: blur(0px) brightness(1);
+    }
+    100% { 
+        transform: scale(1.5); 
+        opacity: 0; 
+        filter: blur(15px) brightness(2);
+        letter-spacing: 30px;
+    }
+}
+
+/* Biar gak aneh di HP */
+@media (max-width: 768px) {
+    .meriah-text { font-size: 1.5rem; letter-spacing: -2px; }
+}
+/* =========================================
+   ANIMASI SMOOTH GAYA TIKTOK
+   ========================================= */
+
+/* 1. Wrapper Utama (Memastikan di Tengah & Di Atas Semuanya) */
+#giftAnimationContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none; /* Penting! Supaya nggak menghalangi klik setelah animasi */
+  z-index: 999999; /* Sangat tinggi */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden; /* Sembunyikan elemen yang keluar layar */
+}
+
+/* 2. Gambar Utama (Gede di Tengah) */
+.gift-main-img {
+  width: 320px; /* Sedikit lebih gede biar bombastis */
+  height: auto;
+  filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.7));
+  opacity: 0;
+  transform: scale(0.5) rotate(-15deg); /* Start: Kecil, miring, transparan */
+  
+  /* Animasi Masuk: Halus & Sedikit Membal */
+  animation: tiktokPopIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes tiktokPopIn {
+  0% { 
+    opacity: 0; 
+    transform: scale(0.5) rotate(-15deg); 
+  }
+  40% { 
+    opacity: 1; 
+    transform: scale(1.1) rotate(5deg); /* Sedikit membesar */
+  }
+  100% { 
+    opacity: 1; 
+    transform: scale(1) rotate(0deg); /* Kembali normal */
+  }
+}
+
+/* 3. Floating Icons (Hujan Gift) */
+.gift-mini-icon {
+  position: absolute;
+  width: 60px; /* Ukuran ikon mini */
+  height: auto;
+  opacity: 0;
+  
+  /* Animasi Meluncur: Halus & Cepat */
+  animation: tiktokFloatUp 2.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes tiktokFloatUp {
+  0% { 
+    opacity: 0; 
+    transform: translateY(100vh) rotate(0deg) scale(0.8); /* Start: Di bawah layar */
+  }
+  15% { 
+    opacity: 1; 
+    transform: translateY(80vh) rotate(10deg) scale(1); /* Mulai muncul */
+  }
+  80% { 
+    opacity: 1; /* Tetap muncul saat di tengah */
+  }
+  100% { 
+    opacity: 0; 
+    transform: translateY(-20vh) rotate(360deg) scale(1.1); /* End: Di atas layar, muter, hilang */
+  }
+}
+/* State saat gift dipilih */
+.gift-item.selected-gift {
+  border: 2px solid #ff4757 !important; /* Warna pink/merah biar kontras */
+  background: rgba(255, 71, 87, 0.1) !important;
+  transform: scale(1.05); /* Sedikit membesar biar kerasa interaksinya */
+  box-shadow: 0 0 15px rgba(255, 71, 87, 0.3);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Tambahkan animasi goyang dikit pas diklik */
+.gift-item.selected-gift img {
+  animation: bounceMini 0.4s ease;
+}
+
+@keyframes bounceMini {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Efek hover biar user tahu itu bisa diklik */
+.gift-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-3px);
+}
+.sidebar-post-btn {
+  width: 100%;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  margin-top: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  background: #2d79f3;
+  color: white;
+  box-shadow: 0 8px 20px rgba(45, 121, 243, 0.25);
+  transition: all 0.25s ease;
+}
+
+.sidebar-post-btn:hover {
+  background: #256de0;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(45, 121, 243, 0.35);
+}
+
+.sidebar-post-btn:active {
+  transform: scale(0.98);
+  background: #1f63cf;
+}
+/* =======================
+   POST MODAL
+======================= */
+.post-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 18, 40, 0.7);
+  backdrop-filter: blur(8px);
+  display: none; /* hidden default */
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  padding: 20px;
+}
+
+.post-modal.active {
+  display: flex; /* muncul saat diklik */
+}
+
+.post-modal-content {
+  width: 100%;
+  max-width: 480px;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 24px;
+  position: relative;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.22);
+  animation: postPop 0.25s ease;
+}
+
+@keyframes postPop {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.post-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(45, 121, 243, 0.12);
+  color: #2d79f3;
+  font-size: 24px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.post-close-btn:hover {
+  background: #2d79f3;
+  color: #fff;
+}
+
+.post-modal-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1b2b4b;
+  margin-bottom: 6px;
+}
+
+.post-modal-subtitle {
+  font-size: 14px;
+  color: #6b7a99;
+  margin-bottom: 20px;
+}
+
+.post-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.post-upload-area {
+  border: 2px dashed rgba(45, 121, 243, 0.35);
+  border-radius: 18px;
+  background: rgba(45, 121, 243, 0.05);
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  transition: 0.25s ease;
+}
+
+.post-upload-area:hover {
+  border-color: #2d79f3;
+  background: rgba(45, 121, 243, 0.08);
+}
+
+.post-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #2d79f3;
+  font-weight: 600;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+}
+
+.post-upload-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2d79f3;
+}
+
+.post-upload-placeholder small {
+  font-size: 12px;
+  color: #7a8aa8;
+  font-weight: 500;
+}
+
+.post-preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  max-height: 320px;
+  display: block;
+}
+
+.post-textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: none;
+  border: 1.5px solid #d9e6ff;
+  border-radius: 16px;
+  padding: 14px 16px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  outline: none;
+  color: #1b2b4b;
+  transition: 0.2s ease;
+}
+
+.post-textarea:focus {
+  border-color: #2d79f3;
+  box-shadow: 0 0 0 4px rgba(45, 121, 243, 0.12);
+}
+
+.post-select {
+  width: 100%;
+  border: 1.5px solid #d9e6ff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+  color: #1b2b4b;
+}
+
+.post-select:focus {
+  border-color: #2d79f3;
+  box-shadow: 0 0 0 4px rgba(45, 121, 243, 0.12);
+}
+
+.post-submit-btn {
+  border: none;
+  outline: none;
+  background: #2d79f3;
+  color: white;
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 15px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: 0.25s ease;
+  box-shadow: 0 12px 24px rgba(45, 121, 243, 0.22);
+}
+
+.post-submit-btn:hover {
+  background: #256de0;
+  transform: translateY(-2px);
+}
+
+.post-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+/* =======================
+   POST MODAL - CLEAN HUMAN STYLE
+======================= */
+.post-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  padding: 20px;
+}
+
+.post-modal.active {
+  display: flex;
+}
+
+.post-modal-content {
+  width: 100%;
+  max-width: 460px;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 22px;
+  position: relative;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  animation: postFadeUp 0.18s ease;
+}
+
+@keyframes postFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.post-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 20px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.post-close-btn:hover {
+  background: #e2e8f0;
+}
+
+.post-modal-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.post-modal-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
+.post-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.post-upload-area {
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 14px;
+  background: #f8fafc;
+  min-height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  transition: 0.2s ease;
+}
+
+.post-upload-area:hover {
+  border-color: #2d79f3;
+  background: #f1f6ff;
+}
+
+.post-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  padding: 20px;
+}
+
+.post-upload-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.post-upload-placeholder small {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.post-preview-image {
+  width: 100%;
+  height: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  display: block;
+}
+
+.post-textarea {
+  width: 100%;
+  min-height: 100px;
+  resize: none;
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  padding: 13px 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  outline: none;
+  color: #0f172a;
+  background: #fff;
+  transition: 0.2s ease;
+}
+
+.post-textarea::placeholder {
+  color: #94a3b8;
+}
+
+.post-textarea:focus {
+  border-color: #2d79f3;
+  box-shadow: 0 0 0 3px rgba(45, 121, 243, 0.12);
+}
+
+.post-select {
+  width: 100%;
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  padding: 13px 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+  color: #0f172a;
+  transition: 0.2s ease;
+}
+
+.post-select:focus {
+  border-color: #2d79f3;
+  box-shadow: 0 0 0 3px rgba(45, 121, 243, 0.12);
+}
+
+.post-submit-btn {
+  border: none;
+  background: #2d79f3;
+  color: #fff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.post-submit-btn:hover {
+  background: #256de0;
+}
+
+.post-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .post-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .post-modal-content {
+    max-width: 100%;
+    width: 100%;
+    border-radius: 18px 18px 0 0;
+    padding: 20px 16px;
+  }
+
+  .post-upload-area {
+    min-height: 170px;
+  }
+}
+/* =========================================
+   CUSTOM DROPUP CATEGORY - DARK THEME
+   ========================================= */
+
+/* Container utama untuk mengatur posisi */
+.custom-select-container {
+  position: relative;
+  width: 100%;
+  margin: 15px 0;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Tombol pemicu (Box yang diklik) */
+.select-trigger {
+  width: 100%;
+  background: #1a1a1a; /* Hitam elegan */
+  color: #ffffff;
+  padding: 14px 18px;
+  border: 1px solid #333;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.select-trigger:hover {
+  background: #242424;
+  border-color: #2d79f3; /* Glow biru tipis saat hover */
+}
+
+/* Icon Panah (Segitiga kecil) */
+.arrow-icon {
+  font-size: 12px;
+  color: #888;
+  transition: transform 0.3s ease;
+}
+
+/* Efek saat dropdown terbuka (Class .active) */
+.custom-select-container.active .select-trigger {
+  border-color: #2d79f3;
+  box-shadow: 0 0 0 3px rgba(45, 121, 243, 0.15);
+}
+
+.custom-select-container.active .arrow-icon {
+  transform: rotate(180deg); /* Panah berputar saat buka */
+}
+
+/* =========================================
+   LIST PILIHAN (MENU KE ATAS)
+   ========================================= */
+
+.select-options-list {
+  /* HAPUS !important DI SINI */
+  display: none; 
+  
+  position: absolute;
+  bottom: calc(100% + 10px); 
+  left: 0;
+  right: 0;
+  
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 14px;
+  z-index: 999999; 
+  
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 -12px 30px rgba(0,0,0,0.6); 
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+/* Tampilkan saat parent aktif */
+.custom-select-container.active .select-options-list {
+  /* Kasih !important di sini saja supaya dia menang saat aktif */
+  display: block !important;
+  animation: dropUpAnim 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+
+/* Item di dalam list */
+.option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  color: #ccc;
+  cursor: pointer;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  margin-bottom: 2px;
+}
+
+.option-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Hover pada pilihan */
+.option-item:hover {
+  background: #2d79f3;
+  color: #fff;
+}
+
+/* Item yang sedang dipilih */
+.option-item.selected {
+  background: rgba(45, 121, 243, 0.15);
+  color: #2d79f3;
+  font-weight: 600;
+}
+
+/* Penanda Checkmark (Opsional jika lo pakai icon) */
+.option-item.selected::after {
+  content: '✓';
+  font-size: 12px;
+}
+
+/* =========================================
+   ANIMASI & SCROLLBAR
+   ========================================= */
+
+@keyframes dropUpAnim {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom Scrollbar biar nggak kaku */
+.select-options-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.select-options-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.select-options-list::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 10px;
+}
+/* Menghilangkan kotak biru/abu-abu saat elemen diklik di mobile */
+* {
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+}
+
+/* Khusus untuk tombol atau menu agar tidak ada outline saat difokuskan */
+.menu-item-tiktok, .btn, .tab, button {
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+    user-select: none; /* Biar teksnya nggak gak sengaja kepilih/keblok */
+}
+/* Container Skeleton */
+.skeleton-wrapper {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+/* Base Style Skeleton Card */
+.skeleton-card {
+  background: #1a1a1a;
+  border-radius: 20px;
+  height: 400px; /* Samakan dengan tinggi .card kamu */
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #333;
+}
+
+/* Animasi Cahaya Lewat (Shimmer) */
+.skeleton-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.05) 20%,
+    rgba(255, 255, 255, 0.1) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Detail di dalam skeleton */
+.skeleton-info {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+}
+
+.skeleton-text {
+  background: #333;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.skeleton-name { width: 60%; height: 18px; }
+.skeleton-bio { width: 40%; height: 12px; }
+
+ 

@@ -50,6 +50,7 @@ const searchBtn = document.getElementById("sticker-search-btn");
 
 // ===== [FIX EGRESS] CACHE HELPER =====
 async function getCachedProfile(userId) {
+  sessionStorage.clear(); // <--- TAMBAHIN BARIS INI DULU BUAT NGETES
   const key = `hh_profile_${userId}`;
   const cached = sessionStorage.getItem(key);
   if (cached) return JSON.parse(cached);

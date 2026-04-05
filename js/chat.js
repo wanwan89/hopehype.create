@@ -17,11 +17,13 @@ let currentUser = null;
 let myUsername = "Guest";
 let myRole = "user";
 let presenceChannel = null;
+let globalPresenceChannel = null; // [FIX EGRESS] Channel khusus pantau user online
 let messageChannel = null;
 let typingTimeout = null;
 let isCurrentlyTyping = false;
 let selectedMessageId = null;
 let isFirstMessageLoad = true; 
+let totalOnlineUsers = 0; // [FIX EGRESS] Simpan jumlah online di memori
 
 // ===== DOM =====
 const messagesEl = document.getElementById("chat-messages");
@@ -50,12 +52,12 @@ const searchBtn = document.getElementById("sticker-search-btn");
 
 // ===== [FIX EGRESS] CACHE HELPER =====
 async function getCachedProfile(userId) {
-  sessionStorage.clear(); // <--- TAMBAHIN BARIS INI DULU BUAT NGETES
   const key = `hh_profile_${userId}`;
   const cached = sessionStorage.getItem(key);
   if (cached) return JSON.parse(cached);
   
-  const { data } = await supabase.from('profiles').select('username, avatar_url, role, short_id').eq('id', userId).single();
+  // [FIX]: Tambahin 'gender' di query select biar kebawa ke cache
+  const { data } = await supabase.from('profiles').select('username, avatar_url, role, short_id, gender').eq('id', userId).single();
   if (data) sessionStorage.setItem(key, JSON.stringify(data));
   return data;
 }
@@ -64,17 +66,13 @@ async function getCachedProfile(userId) {
 let chatHistoryDebounce;
 function triggerLoadChatHistory() {
   clearTimeout(chatHistoryDebounce);
-  // Tunggu 1.5 detik. Kalau ada chat masuk beruntun, narik history cuma 1 kali. Irit banget!
   chatHistoryDebounce = setTimeout(() => loadChatHistory(), 1500); 
 }
 
 // ===== Helpers =====
 function scrollToBottom() {
   if (messagesEl) {
-    messagesEl.scrollTo({
-      top: messagesEl.scrollHeight,
-      behavior: "smooth",
-    });
+    messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: "smooth" });
   }
 }
 
@@ -111,7 +109,6 @@ function showToast(message) {
 
   const toast = document.createElement("div");
   toast.className = "toast-card";
-
   toast.innerHTML = `
     <div class="toast-icon-wrap warning">
       <span class="toast-icon">!</span>
@@ -214,7 +211,6 @@ async function requireLogin() {
   }
   currentUser = { id: session.user.id };
 
-  // [FIX EGRESS] Ambil dari Cache!
   const myProfile = await getCachedProfile(session.user.id);
   myUsername = myProfile?.username || session.user.email || "Guest";
   myRole = myProfile?.role || "user";
@@ -222,23 +218,27 @@ async function requireLogin() {
   return true;
 }
 
-// ===== Presence / Typing =====
+// ===== [FULL FIX EGRESS] Presence / Typing =====
+// Kita hapus semua interval polling 30 detik. Semua mengandalkan Presence Websocket
 async function initPresence() {
   if (!currentUser) return;
+  
+  // 1. Channel Khusus Typing per Ruangan (Biar gak bentrok)
   if (presenceChannel) { await supabase.removeChannel(presenceChannel); presenceChannel = null; }
-
-  presenceChannel = supabase.channel(`presence-${currentRoomId}`, { config: { presence: { key: myUsername } } });
+  presenceChannel = supabase.channel(`presence-${currentRoomId}`, { config: { presence: { key: currentUser.id } } });
 
   presenceChannel.on("presence", { event: "sync" }, () => {
     const state = presenceChannel.presenceState();
-    const statusHeader = document.getElementById("status-header");
     const typingHeader = document.getElementById("typing-header");
+    const statusHeader = document.getElementById("status-header");
 
-    if (!statusHeader || !typingHeader) return;
+    if (!typingHeader || !statusHeader) return;
     const typingUsers = [];
 
-    for (const userKey in state) {
-      if (userKey !== myUsername && state[userKey].some((p) => p.isTyping)) typingUsers.push(userKey);
+    for (const userId in state) {
+      if (userId !== currentUser.id && state[userId].some((p) => p.isTyping)) {
+        typingUsers.push(state[userId][0].username);
+      }
     }
 
     if (typingUsers.length > 0) {
@@ -252,14 +252,27 @@ async function initPresence() {
   });
 
   presenceChannel.subscribe(async (status) => {
-    if (status === "SUBSCRIBED") {
-      await presenceChannel.track({ isTyping: false, online_at: new Date().toISOString() });
-    }
+    if (status === "SUBSCRIBED") await presenceChannel.track({ isTyping: false, username: myUsername });
   });
 
   if (inputEl) {
     inputEl.removeEventListener("input", handleTypingInput);
     inputEl.addEventListener("input", handleTypingInput);
+  }
+
+  // 2. Channel Global Khusus Online Status (Dijalankan sekali saja saat load)
+  if (!globalPresenceChannel) {
+    globalPresenceChannel = supabase.channel(`global-online-users`, { config: { presence: { key: currentUser.id } } });
+    
+    globalPresenceChannel.on("presence", { event: "sync" }, () => {
+      const state = globalPresenceChannel.presenceState();
+      totalOnlineUsers = Object.keys(state).length;
+      updateHeaderStatus();
+    });
+
+    globalPresenceChannel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") await globalPresenceChannel.track({ online: true, last_seen: new Date().toISOString() });
+    });
   }
 }
 
@@ -267,27 +280,44 @@ async function handleTypingInput() {
   if (!presenceChannel) return;
   if (!isCurrentlyTyping) {
     isCurrentlyTyping = true;
-    await presenceChannel.track({ isTyping: true, online_at: new Date().toISOString() });
+    await presenceChannel.track({ isTyping: true, username: myUsername });
   }
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(async () => {
     isCurrentlyTyping = false;
-    if (presenceChannel) await presenceChannel.track({ isTyping: false, online_at: new Date().toISOString() });
+    if (presenceChannel) await presenceChannel.track({ isTyping: false, username: myUsername });
   }, 3000);
 }
 
-// ===== Online users =====
-async function setUserOnline() {
-  if (!currentUser) return;
-  await supabase.from("online_users").upsert({ user_id: currentUser.id, username: myUsername, last_seen: new Date().toISOString() }, { onConflict: "user_id" });
-}
+// ===== [FIX EGRESS] Update UI Header berdasar Presence, BUKAN dari Database =====
+function updateHeaderStatus() {
+  const headerStatusEl = document.getElementById("status-header");
+  if (!headerStatusEl || !currentUser) return;
 
-async function updateMembers() {
-  if (!membersEl) return;
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  // [FIX EGRESS] Cuma hitung jumlahnya aja, head: true
-  const { count } = await supabase.from("online_users").select("user_id", { count: "exact", head: true }).gt("last_seen", fiveMinutesAgo);
-  membersEl.innerHTML = `<span class="online-dot"></span> ${count || 0} user online`;
+  // Update jumlah member text juga
+  if (membersEl) membersEl.innerHTML = `<span class="online-dot"></span> ${totalOnlineUsers} user online`;
+
+  if (currentRoomId === "room-1") {
+    if (totalOnlineUsers <= 1) { 
+      headerStatusEl.innerHTML = `<span style="opacity:0.8;">Hanya kamu yang online</span>`; 
+    } else { 
+      headerStatusEl.innerHTML = `<span class="online-dot" style="background:#fff; width:7px; height:7px; display:inline-block; border-radius:50%; margin-right:4px;"></span> ${totalOnlineUsers} users online`; 
+    }
+    return;
+  }
+
+  // Cek online Private Chat lewat Presence
+  const partnerId = getPartnerIdFromRoom(currentRoomId);
+  if (!partnerId) return;
+
+  const state = globalPresenceChannel ? globalPresenceChannel.presenceState() : {};
+  const isOnline = !!state[partnerId];
+
+  if (isOnline) { 
+    headerStatusEl.innerHTML = `<span class="online-dot" style="background:#2ecc71; width:8px; height:8px; display:inline-block; border-radius:50%; margin-right:4px;"></span> Sedang online`; 
+  } else { 
+    headerStatusEl.innerHTML = `<span style="opacity:0.8;">Offline</span>`; 
+  }
 }
 
 // ===== FULL RENDER MESSAGE =====
@@ -441,10 +471,8 @@ async function loadMessages() {
   await markRoomAsRead();
 }
 
-// ===== [FIX EGRESS] MARK ROOM AS READ (TIDAK PAKE SELECT) =====
 async function markRoomAsRead() {
   if (!currentUser) return;
-  // Langsung tembak update! Gak perlu manggil Select dulu. Irit egress.
   await supabase.from("messages")
     .update({ status: "read" })
     .eq("room_id", currentRoomId)
@@ -493,7 +521,6 @@ async function Message() {
     const tempEl = document.getElementById(`msg-${tempId}`);
     if (tempEl && data) { tempEl.id = `msg-${data.id}`; updateMessageStatusUI(data.id, "sent"); }
 
-    triggerLoadChatHistory(); // [FIX EGRESS] Pake debounce!
   } catch (err) {
     showToast("Gagal mengirim pesan");
     const failEl = document.getElementById(`msg-${tempId}`);
@@ -510,9 +537,7 @@ if (inputEl) {
 
 async function sendAudioMessage(url) {
   const tempId = "temp-" + Date.now();
-  renderMessage({
-    id: tempId, message: "🎤 Voice Note", audio_url: url, user_id: currentUser.id, username: myUsername, avatar: sideAvatar?.src || "asets/png/profile.png", role: myRole || "user", created_at: new Date().toISOString(), room_id: currentRoomId, status: "sending",
-  });
+  renderMessage({ id: tempId, message: "🎤 Voice Note", audio_url: url, user_id: currentUser.id, username: myUsername, avatar: sideAvatar?.src || "asets/png/profile.png", role: myRole || "user", created_at: new Date().toISOString(), room_id: currentRoomId, status: "sending" });
   scrollToBottom();
 
   try {
@@ -520,11 +545,10 @@ async function sendAudioMessage(url) {
     if (error) throw error;
     const tempEl = document.getElementById(`msg-${tempId}`);
     if (tempEl && data) { tempEl.id = `msg-${data.id}`; updateMessageStatusUI(data.id, "sent"); }
-    triggerLoadChatHistory(); // [FIX EGRESS]
   } catch (err) { showToast("Gagal mengirim VN ke chat"); }
 }
 
-// ===== Realtime Messages =====
+// ===== [FULL FIX EGRESS] Realtime Messages =====
 function initRealtimeMessages() {
   if (!currentUser) return;
   if (messageChannel) { supabase.removeChannel(messageChannel); messageChannel = null; }
@@ -534,28 +558,47 @@ function initRealtimeMessages() {
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async (payload) => {
         const newMsg = payload.new;
         
-        triggerLoadChatHistory(); // [FIX EGRESS] Panggil versi hemat (Debounced)
+        // HANYA reload sidebar kalau ini pesan pribadi ke kita (BUKAN Chat Global)
+        if (newMsg.room_id.startsWith("pv_") && newMsg.room_id.includes(currentUser.id)) {
+            triggerLoadChatHistory(); 
+        }
 
         if (newMsg.room_id === currentRoomId) {
           if (document.getElementById(`msg-${newMsg.id}`)) return;
-          const { data: fullMsg, error } = await supabase
-            .from("messages")
-            .select(`*, reply_to_msg:reply_to(id, username, message, sticker_url, audio_url), profiles:profiles!messages_user_id_fkey(username, avatar_url, role)`)
-            .eq("id", newMsg.id).single();
+          
+          // RAKIT DATA TANPA DATABASE QUERY (SANGAT IRIT)
+          const senderProfile = await getCachedProfile(newMsg.user_id);
+          newMsg.profiles = {
+              username: senderProfile?.username || "User",
+              avatar_url: senderProfile?.avatar_url || "asets/png/profile.png",
+              role: senderProfile?.role || "user"
+          };
 
-          if (error || !fullMsg) return;
+          if (newMsg.reply_to) {
+              const repliedEl = document.getElementById(`msg-${newMsg.reply_to}`);
+              if (repliedEl) {
+                  newMsg.reply_to_msg = {
+                      id: newMsg.reply_to,
+                      username: repliedEl.querySelector(".username")?.innerText || "User",
+                      message: repliedEl.querySelector(".text")?.innerText || ""
+                  };
+              } else {
+                   // Kalau apes pesannya nggak ada di layar, baru query kecil (sangat jarang terjadi)
+                   const { data: rep } = await supabase.from("messages").select("id, username, message").eq("id", newMsg.reply_to).maybeSingle();
+                   newMsg.reply_to_msg = rep;
+              }
+          }
 
-          if (fullMsg.user_id === currentUser.id) {
+          if (newMsg.user_id === currentUser.id) {
             const tempEl = document.querySelector(`[id^="msg-temp-"]`);
             if (tempEl) tempEl.remove();
-            renderMessage(fullMsg);
+            renderMessage(newMsg);
           } else {
-            renderMessage(fullMsg);
+            renderMessage(newMsg);
             receiveSound.play().catch(() => {});
-            await supabase.from("messages").update({ status: document.hidden ? "delivered" : "read" }).eq("id", fullMsg.id);
+            await supabase.from("messages").update({ status: document.hidden ? "delivered" : "read" }).eq("id", newMsg.id);
           }
           scrollToBottom();
-          updateHeaderStatus();
         }
       })
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, (payload) => {
@@ -605,7 +648,7 @@ if (overlay) overlay.addEventListener("click", closeSidebar);
 
 // ===== Profile Sidebar =====
 async function loadProfile() {
-  const profile = await getCachedProfile(currentUser.id); // [FIX EGRESS]
+  const profile = await getCachedProfile(currentUser.id);
   if (!profile) return;
   myUsername = profile.username || myUsername;
   myRole = profile.role || myRole;
@@ -636,7 +679,7 @@ function renderGlobalChatItem(container) {
     initPresence();
     const headerTitle = document.querySelector(".chat-header h3");
     if (headerTitle) headerTitle.textContent = "HopeTalk Globe";
-    initRealtimeMessages(); await loadMessages(); await updateHeaderStatus(); closeSidebar();
+    await loadMessages(); updateHeaderStatus(); closeSidebar();
   };
   container.appendChild(globalBtn);
 }
@@ -678,7 +721,6 @@ async function loadChatHistory() {
     }
 
     const partnerIds = Array.from(lastMessagesMap.keys());
-    // [FIX EGRESS] Cek Cache Partner dulu biar gak query massal tiap sidebar kebuka
     const missingIds = [];
     const profileMap = new Map();
 
@@ -747,32 +789,12 @@ if (btnSearchId) {
 async function bukaChatPribadi(partnerId, partnerName, partnerShortId = "") {
   const ids = [currentUser.id, partnerId].sort();
   currentRoomId = `pv_${ids[0]}_${ids[1]}`; isFirstMessageLoad = true;
-  initPresence(); initRealtimeMessages();
+  initPresence(); 
   const headerTitle = document.querySelector(".chat-header h3");
   if (headerTitle) headerTitle.innerHTML = `${escapeHtml(partnerName)} <span style="font-size:10px; opacity:0.5;">#${escapeHtml(partnerShortId)}</span>`;
-  await updateHeaderStatus(); await loadMessages(); closeSidebar(); scrollToBottom();
+  updateHeaderStatus(); await loadMessages(); closeSidebar(); scrollToBottom();
   localStorage.setItem(`last_read_${currentRoomId}`, new Date().toISOString());
   await loadChatHistory();
-}
-
-async function updateHeaderStatus() {
-  const headerStatusEl = document.getElementById("status-header");
-  if (!headerStatusEl || !currentUser) return;
-  if (currentRoomId === "room-1") {
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const { count } = await supabase.from("online_users").select("user_id", { count: "exact", head: true }).gt("last_seen", fiveMinutesAgo);
-    const totalOnline = count || 0;
-    if (totalOnline <= 1) { headerStatusEl.innerHTML = `<span style="opacity:0.8;">Hanya kamu yang online</span>`; } 
-    else { headerStatusEl.innerHTML = `<span class="online-dot" style="background:#fff; width:7px; height:7px; display:inline-block; border-radius:50%; margin-right:4px;"></span> ${totalOnline} users online`; }
-    return;
-  }
-  const partnerId = getPartnerIdFromRoom(currentRoomId);
-  if (!partnerId) return;
-  const { data: partnerStatus } = await supabase.from("online_users").select("last_seen").eq("user_id", partnerId).maybeSingle();
-  if (!partnerStatus) { headerStatusEl.innerHTML = `<span style="opacity:0.6;">Offline</span>`; return; }
-  const isOnline = new Date() - new Date(partnerStatus.last_seen) < 5 * 60 * 1000;
-  if (isOnline) { headerStatusEl.innerHTML = `<span class="online-dot" style="background:#2ecc71; width:8px; height:8px; display:inline-block; border-radius:50%; margin-right:4px;"></span> Sedang online`; } 
-  else { headerStatusEl.innerHTML = `<span style="opacity:0.8;">Terakhir terlihat ${formatTime(partnerStatus.last_seen)}</span>`; }
 }
 
 const apiKey = "vPUlBU5Qfz2ZygoEtKXVUqmIEAEcIB08";
@@ -794,7 +816,7 @@ async function fetchStickers(query = "") {
 async function sendSticker(url) {
   const tempId = "temp-" + Date.now();
   try {
-    const profile = await getCachedProfile(currentUser.id); // [FIX EGRESS]
+    const profile = await getCachedProfile(currentUser.id);
     renderMessage({ id: tempId, message: "", user_id: currentUser.id, username: profile?.username || "User", avatar: profile?.avatar_url || "asets/png/profile.png", role: profile?.role || "user", sticker_url: url, created_at: new Date().toISOString(), room_id: currentRoomId, status: "sending" });
     scrollToBottom(); sendSound.play().catch(() => {});
     const { data, error } = await supabase.from("messages").insert([{ message: "", user_id: currentUser.id, username: profile?.username || "User", avatar: profile?.avatar_url || "asets/png/profile.png", role: profile?.role || "user", sticker_url: url, room_id: currentRoomId, status: "sent" }]).select().single();
@@ -802,7 +824,6 @@ async function sendSticker(url) {
     const tempEl = document.getElementById(`msg-${tempId}`);
     if (tempEl && data) { tempEl.id = `msg-${data.id}`; updateMessageStatusUI(data.id, "sent"); }
     if (stickerMenu) stickerMenu.style.display = "none";
-    triggerLoadChatHistory(); // [FIX EGRESS]
   } catch (err) { showToast("Gagal kirim stiker"); }
 }
 
@@ -850,9 +871,17 @@ if (saveBtnElement) {
     saveBtnElement.innerText = "Menyimpan..."; saveBtnElement.disabled = true;
     try {
       const { error } = await supabase.from("profiles").update({
-          age: Number(document.getElementById("in-umur")?.value) || null, gender: document.getElementById("in-gender")?.value, zodiac: document.getElementById("in-zodiak")?.value, hobby: document.getElementById("in-hobi")?.value, occupation: document.getElementById("in-kerja")?.value,
+          age: Number(document.getElementById("in-umur")?.value) || null, 
+          gender: document.getElementById("in-gender")?.value, 
+          zodiac: document.getElementById("in-zodiak")?.value, 
+          hobby: document.getElementById("in-hobi")?.value, 
+          occupation: document.getElementById("in-kerja")?.value,
         }).eq("id", currentUser.id);
       if (error) throw error;
+      
+      // [FIX CACHE]: Hapus cache lama biar sistem tahu biodatamu udah diupdate!
+      sessionStorage.removeItem(`hh_profile_${currentUser.id}`);
+      
       showToast("Biodata berhasil disimpan!"); window.closeBioModal();
     } catch (err) { showToast("Gagal simpan biodata"); } 
     finally { saveBtnElement.innerText = "Simpan & Cari"; saveBtnElement.disabled = false; }
@@ -874,7 +903,7 @@ function tampilkanDoiCard(doi) {
 const btnCariDoiActual = document.getElementById("btn-sidebar-search");
 if (btnCariDoiActual) {
   btnCariDoiActual.onclick = async () => {
-    const myProfile = await getCachedProfile(currentUser.id); // [FIX EGRESS]
+    const myProfile = await getCachedProfile(currentUser.id); 
     if (!myProfile?.gender) { showToast("Setel GENDER kamu dulu di Edit Biodata!"); window.openEditProfile(); return; }
     closeSidebar();
     const loadingOverlay = document.createElement("div"); loadingOverlay.className = "searching-overlay"; loadingOverlay.innerHTML = `<div class="radar"></div><div class="searching-text">MENCARI PASANGAN...</div><div style="font-size:10px; margin-top:10px; opacity:0.6;">Menghubungkan ke server HopeTalk...</div>`; document.body.appendChild(loadingOverlay);
@@ -888,10 +917,6 @@ if (btnCariDoiActual) {
     }, 2500);
   };
 }
-
-supabase.channel("sidebar-updates").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
-    if (payload.new.room_id.includes(currentUser.id) || payload.new.room_id === "room-1") triggerLoadChatHistory(); // [FIX EGRESS] DEBOUNCE
-}).subscribe();
 
 document.addEventListener("visibilitychange", async () => { if (!document.hidden) await markRoomAsRead(); });
 
@@ -981,9 +1006,14 @@ window.playVN = function (btn, audioUrl) {
 async function init() {
   try {
     const ok = await requireLogin(); if (!ok) return;
-    await loadProfile(); await setUserOnline(); await updateMembers(); await initPresence(); await loadChatHistory();
-    initRealtimeMessages(); await loadMessages(); await updateHeaderStatus(); fetchStickers(); scrollToBottom();
-    setInterval(setUserOnline, 30000); setInterval(updateMembers, 30000); setInterval(updateHeaderStatus, 30000);
+    await loadProfile(); 
+    await initPresence(); 
+    await loadChatHistory();
+    initRealtimeMessages(); 
+    await loadMessages(); 
+    updateHeaderStatus(); 
+    fetchStickers(); 
+    scrollToBottom();
   } catch (err) { showToast("Gagal memuat chat"); }
 }
 

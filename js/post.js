@@ -26,15 +26,14 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let currentPostId = null;
-let currentPostCreator = null; // [FIX EGRESS] Nyimpen ID pembuat post buat komen
+let currentPostCreator = null; 
 let replyTo = null;
 let replyToUsername = null;
 let giftState = { postId: null, creatorId: null, creatorName: "", userCoins: 0, selectedAmount: 0 };
 
 // =======================
-// [FIX EGRESS] CACHE HELPER
+// CACHE HELPER
 // =======================
-// Ngambil profil dari cache HP (biar gak bolak-balik nembak Supabase)
 async function getMyProfile(userId) {
   const cacheKey = `hh_profile_${userId}`;
   const cached = sessionStorage.getItem(cacheKey);
@@ -50,7 +49,7 @@ async function getMyProfile(userId) {
 // =======================
 async function createNotification({ user_id, actor_id, post_id, type, message }) {
   try {
-    const finalActorId = actor_id; // Pake dari parameter aja biar irit
+    const finalActorId = actor_id; 
     let finalTargetUserId = user_id;
 
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -123,7 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // =======================
-// FETCH POSTS 
+// FETCH POSTS (SAFE BULK METHOD 🔥)
 // =======================
 async function fetchPosts(category = "all") {
   const gallery = document.getElementById("mainGallery");
@@ -132,6 +131,7 @@ async function fetchPosts(category = "all") {
   gallery.innerHTML = `<div class="skeleton-wrapper" style="grid-column: 1/-1; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; width: 100%;">${Array(6).fill(0).map(() => `<div class="skeleton-card"><div class="skeleton-shimmer"></div></div>`).join("")}</div>`;
 
   try {
+    // 1. Tarik data post & profile pakai cara lama yang terbukti aman
     let query = supabaseClient
       .from("posts")
       .select(`id, image_url, bio, created_at, creator_id, category, profiles!inner (id, username, role, avatar_url)`)
@@ -152,6 +152,25 @@ async function fetchPosts(category = "all") {
       return;
     }
 
+    // --- AWAL TEKNIK BULK FETCH ---
+    // Kumpulin semua ID post yang lagi ditampilin di layar
+    const postIds = posts.map(p => p.id);
+
+    // Minta data semua like & komen HANYA UNTUK post yang tampil (cuma butuh 1x request paralel!)
+    const [likesRes, commentsRes] = await Promise.all([
+      supabaseClient.from("likes").select("post_id").in("post_id", postIds),
+      supabaseClient.from("comments").select("post_id").in("post_id", postIds)
+    ]);
+
+    // Kita hitung jumlahnya pakai JavaScript (Sangat cepat dan hemat Egress)
+    const likeCounts = {};
+    const commentCounts = {};
+    postIds.forEach(id => { likeCounts[id] = 0; commentCounts[id] = 0; });
+    
+    if (likesRes.data) likesRes.data.forEach(l => likeCounts[l.post_id]++);
+    if (commentsRes.data) commentsRes.data.forEach(c => commentCounts[c.post_id]++);
+    // --- AKHIR TEKNIK BULK FETCH ---
+
     posts.forEach((post) => {
       const card = document.createElement("div");
       card.className = "card post-fade-in";
@@ -160,7 +179,10 @@ async function fetchPosts(category = "all") {
       const dateObj = new Date(post.created_at);
       const formattedDate = dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
 
-      // [FIX EGRESS]: Nambahin data-creator di tombol like & comment biar gak usah nembak database nyari tau ini post siapa
+      // Masukkan angka hasil hitungan JS tadi ke sini
+      const likeCount = likeCounts[post.id] || 0;
+      const commentCount = commentCounts[post.id] || 0;
+
       card.innerHTML = `
         <div class="slider">
           <img src="${post.image_url || "asets/png/karya.png"}" class="active" loading="lazy">
@@ -178,16 +200,18 @@ async function fetchPosts(category = "all") {
             <a href="data.html?id=${post.creator_id}" class="primary">Detail</a>
             <div class="engagement-group">
                <button class="icon-btn gift-btn" data-post="${post.id}" data-creator="${post.creator_id}" data-name="${post.profiles?.username}"><svg viewBox="0 0 24 24" class="icon"><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg></button>
-               <button class="icon-btn like-btn" data-post="${post.id}" data-creator="${post.creator_id}"><svg viewBox="0 0 24 24" class="icon heart"><path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/></svg><span class="like-count">0</span></button>
-               <button class="icon-btn comment-toggle" data-post="${post.id}" data-creator="${post.creator_id}"><svg viewBox="0 0 24 24" class="icon"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg><span class="comment-count">0</span></button>
+               <button class="icon-btn like-btn" data-post="${post.id}" data-creator="${post.creator_id}"><svg viewBox="0 0 24 24" class="icon heart"><path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/></svg><span class="like-count">${likeCount}</span></button>
+               <button class="icon-btn comment-toggle" data-post="${post.id}" data-creator="${post.creator_id}"><svg viewBox="0 0 24 24" class="icon"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg><span class="comment-count">${commentCount}</span></button>
             </div>
           </div>
         </div>`;
       gallery.appendChild(card);
     });
 
-    initGiftButtons(); initLikeButtons(); initComments(); loadLikes(); loadCommentCounts();
+    initGiftButtons(); initLikeButtons(); initComments(); loadLikes(); 
   } catch (err) {
+    // Aku tambahin console.error biar kalau error lagi, kita bisa tahu penyebab pastinya di Inspect Element
+    console.error("Gagal load post:", err);
     gallery.innerHTML = '<p style="color:red; text-align:center; grid-column:1/-1;">Gagal memuat data.</p>';
   }
 }
@@ -207,7 +231,6 @@ function initGiftButtons() {
       const creatorId = newBtn.dataset.creator;
       if (session.user.id === creatorId) { showNotif("Gak bisa gift diri sendiri", "warning"); return; }
 
-      // [FIX EGRESS]: Ambil koin dari Cache
       const prof = await getMyProfile(session.user.id);
       openGiftSheet({ postId, creatorId, creatorName: newBtn.dataset.name, userCoins: prof?.coins || 0 });
     });
@@ -252,14 +275,12 @@ async function processGiftTransaction() {
     showBigImage(selectedGiftImage);
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
 
-    // [FIX EGRESS] Ambil nama dari cache
     const sProf = await getMyProfile(session.user.id);
     await createNotification({ user_id: giftState.creatorId, actor_id: session.user.id, post_id: giftState.postId, type: "gift", message: `${sProf?.username} mengirim ${amount} coin ke karyamu` });
 
     giftState.userCoins -= amount;
     document.getElementById("giftUserCoins").textContent = giftState.userCoins;
     
-    // Update cache koin di HP biar sinkron
     sProf.coins = giftState.userCoins;
     sessionStorage.setItem(`hh_profile_${session.user.id}`, JSON.stringify(sProf));
     
@@ -298,7 +319,7 @@ function initComments() {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (!session) { openLogin(); return; }
       currentPostId = newBtn.dataset.post;
-      currentPostCreator = newBtn.dataset.creator; // [FIX EGRESS] Tangkap ID dari tombol
+      currentPostCreator = newBtn.dataset.creator; 
       modal.classList.add("active");
       list.innerHTML = "<li style='color:#aaa; text-align:center; padding:20px;'>Loading...</li>";
       await loadCommentsStructured();
@@ -317,7 +338,6 @@ function initComments() {
         await supabaseClient.from("comments").insert({ post_id: parseInt(currentPostId), user_id: session.user.id, content, parent_id: sReplyTo ? parseInt(sReplyTo) : null, reply_to_username: sReplyUser || null });
         replyTo = null; replyToUsername = null; input.placeholder = "Tulis komentar...";
         
-        // [FIX EGRESS] Gak usah query tabel posts lagi, pake cache & variabel aja
         const sProf = await getMyProfile(session.user.id);
         await createNotification({ user_id: currentPostCreator, actor_id: session.user.id, post_id: currentPostId, type: "comment", message: `${sProf?.username} mengomentari karyamu` });
         
@@ -342,7 +362,6 @@ async function loadCommentsStructured() {
   const list = document.querySelector(".comment-list");
   if (!list || !currentPostId) return;
   
-  // [FIX EGRESS] Hilangkan Promise.all buat narik tabel posts. Pake currentPostCreator aja.
   const { data, error } = await supabaseClient.from("comments").select("id, content, created_at, user_id, parent_id, reply_to_username, profiles(id, username, avatar_url, role)").eq("post_id", currentPostId).order("created_at", { ascending: true });
   
   const ownerId = currentPostCreator;
@@ -392,7 +411,7 @@ function initReplyClick() {
 }
 
 // =======================
-// LIKES SYSTEM (FIX EGRESS CACHE)
+// LIKES SYSTEM (CLEAN OPTIMIZED)
 // =======================
 function initLikeButtons() {
   document.querySelectorAll(".like-btn").forEach((btn) => {
@@ -401,31 +420,23 @@ function initLikeButtons() {
     newBtn.addEventListener("click", async () => {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (!session) { openLogin(); return; }
+      
       const pId = newBtn.dataset.post;
-      const creatorId = newBtn.dataset.creator; // [FIX EGRESS] ID creator dari tombol
-
-      // Cek tombolnya sekarang udah dilike apa belom
+      const creatorId = newBtn.dataset.creator; 
       const isCurrentlyLiked = newBtn.classList.contains("liked");
       let currentCount = parseInt(newBtn.querySelector(".like-count").textContent || "0");
 
       if (isCurrentlyLiked) {
-        // UNLIKE
+        // UNLIKE (Update UI duluan, database jalan di background)
         newBtn.classList.remove("liked");
         newBtn.querySelector(".like-count").textContent = Math.max(0, currentCount - 1);
-        sessionStorage.setItem(`hh_likes_count_${pId}`, Math.max(0, currentCount - 1));
-        sessionStorage.setItem(`hh_i_liked_${pId}`, "false");
-        
-        // Eksekusi background
         await supabaseClient.from("likes").delete().eq("post_id", pId).eq("user_id", session.user.id);
       } else {
         // LIKE
         newBtn.classList.add("liked");
         newBtn.querySelector(".like-count").textContent = currentCount + 1;
-        sessionStorage.setItem(`hh_likes_count_${pId}`, currentCount + 1);
-        sessionStorage.setItem(`hh_i_liked_${pId}`, "true");
-
-        // Eksekusi background
         await supabaseClient.from("likes").insert({ post_id: pId, user_id: session.user.id });
+        
         const sP = await getMyProfile(session.user.id);
         await createNotification({ user_id: creatorId, actor_id: session.user.id, post_id: pId, type: "like", message: `${sP?.username} menyukai karyamu` });
       }
@@ -433,52 +444,37 @@ function initLikeButtons() {
   });
 }
 
-// [FIX EGRESS] Ngurangin Load of Death! Nyimpen jumlah like di cache lokal biar gak nge-query 15 kali.
+// [FULL FIX EGRESS] 1x Request Borongan buat nyalain tombol merah
 async function loadLikes() {
   const { data: { session } } = await supabaseClient.auth.getSession();
-  
-  document.querySelectorAll(".like-btn").forEach(async (btn) => {
-    const pId = btn.dataset.post;
-    
-    // 1. Cek Cache Like Count
-    let count = sessionStorage.getItem(`hh_likes_count_${pId}`);
-    if (count === null) {
-      const res = await supabaseClient.from("likes").select("id", { count: "exact", head: true }).eq("post_id", pId);
-      count = res.count || 0;
-      sessionStorage.setItem(`hh_likes_count_${pId}`, count);
-    }
-    btn.querySelector(".like-count").textContent = count;
+  if (!session) return; 
 
-    // 2. Cek Cache Status "I Liked"
-    if (session) {
-      let iLiked = sessionStorage.getItem(`hh_i_liked_${pId}`);
-      if (iLiked === null) {
-        const { data } = await supabaseClient.from("likes").select("id").eq("post_id", pId).eq("user_id", session.user.id).maybeSingle();
-        iLiked = data ? "true" : "false";
-        sessionStorage.setItem(`hh_i_liked_${pId}`, iLiked);
+  const likeBtns = document.querySelectorAll(".like-btn");
+  if (likeBtns.length === 0) return;
+
+  const postIds = Array.from(likeBtns).map(btn => btn.dataset.post);
+
+  try {
+    const { data } = await supabaseClient
+      .from("likes")
+      .select("post_id")
+      .eq("user_id", session.user.id)
+      .in("post_id", postIds);
+
+    const myLikedPostIds = data ? data.map(row => String(row.post_id)) : [];
+
+    likeBtns.forEach(btn => {
+      if (myLikedPostIds.includes(btn.dataset.post)) {
+        btn.classList.add("liked");
       }
-      btn.classList.toggle("liked", iLiked === "true");
-    }
-  });
-}
-
-// [FIX EGRESS] Caching Komen juga!
-async function loadCommentCounts() {
-  document.querySelectorAll(".comment-toggle").forEach(async (btn) => {
-    const pId = btn.dataset.post;
-    let count = sessionStorage.getItem(`hh_comments_count_${pId}`);
-    if (count === null) {
-        const res = await supabaseClient.from("comments").select("id", { count: "exact", head: true }).eq("post_id", pId);
-        count = res.count || 0;
-        sessionStorage.setItem(`hh_comments_count_${pId}`, count);
-    }
-    btn.querySelector(".comment-count").textContent = count;
-  });
+    });
+  } catch (err) {
+    console.error("Gagal cek likes:", err);
+  }
 }
 
 async function updateCommentCount(postId) {
   const { count } = await supabaseClient.from("comments").select("id", { count: "exact", head: true }).eq("post_id", postId);
-  sessionStorage.setItem(`hh_comments_count_${postId}`, count || 0); // Update cache
   const el = document.querySelector(`.comment-toggle[data-post="${postId}"] .comment-count`);
   if (el) el.textContent = count || 0;
 }
@@ -490,7 +486,7 @@ async function getUser() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     currentUser = session.user;
-    const prof = await getMyProfile(currentUser.id); // [FIX EGRESS]
+    const prof = await getMyProfile(currentUser.id); 
     currentUser.role = prof?.role || "user";
     const adminBtn = document.getElementById("adminPanelBtn");
     if (adminBtn) adminBtn.style.display = currentUser.role === "admin" ? "flex" : "none";
@@ -532,7 +528,10 @@ function initCloseButtons() {
 }
 
 function initRealtime() {
-  supabaseClient.channel("updates").on("postgres_changes", { event: "*", schema: "public", table: "comments" }, () => loadCommentCounts()).subscribe();
+  // Hanya nunggu update comment aja, dan kalau ada trigger update UI.
+  supabaseClient.channel("updates").on("postgres_changes", { event: "*", schema: "public", table: "comments" }, (payload) => {
+    if(payload.new && payload.new.post_id) updateCommentCount(payload.new.post_id);
+  }).subscribe();
 }
 
 function initPostModal() {
@@ -569,7 +568,7 @@ async function handlePostSubmit(e) {
   try {
     const { data: { session } } = await supabaseClient.auth.getSession();
     const cData = await uploadImageToCloudinary(selectedPostFile);
-    const prof = await getMyProfile(session.user.id); // [FIX EGRESS]
+    const prof = await getMyProfile(session.user.id);
     await supabaseClient.from("posts").insert({ creator_id: session.user.id, name: prof.username, bio: document.getElementById("postCaption").value, category: document.getElementById("postCategory").value, image_url: cData.secure_url, status: "pending" });
     showNotif("Karya dikirim! Menunggu review", "success");
     document.getElementById("postModal").classList.remove("active");

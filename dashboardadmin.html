@@ -117,7 +117,7 @@
             </section>
 
             <section id="page-users" class="page-section">
-                <input type="text" id="search-user" class="modal-input" placeholder="Cari berdasarkan username..." onkeyup="filterUsers()" style="margin: 0 0 20px 0; background: var(--glass); backdrop-filter: blur(10px);">
+                <input type="text" id="search-user" class="modal-input" placeholder="Cari berdasarkan username (dari 100 user terbaru)..." onkeyup="filterUsers()" style="margin: 0 0 20px 0; background: var(--glass); backdrop-filter: blur(10px);">
                 <div id="userListArea" style="display: flex; flex-direction: column; gap: 15px;"></div>
             </section>
 
@@ -224,12 +224,12 @@
             document.getElementById('tab-wd-pending').className = status==='pending'?'btn btn-acc':'btn btn-inactive';
             document.getElementById('tab-wd-history').className = status==='history'?'btn btn-acc':'btn btn-inactive';
             
-            // Tampilkan tombol Hapus Semua Riwayat hanya di tab riwayat
             document.getElementById('btn-clear-all-wd').style.display = status==='history' ? 'block' : 'none';
 
-            let query = db.from('withdraw_requests').select('*').order('created_at', {ascending: false});
+            let query = db.from('withdraw_requests').select('*').order('created_at', {ascending: false}).limit(100); // FIX: Ditambah limit 100
             if(status === 'pending') query = query.eq('status', 'pending');
             else query = query.neq('status', 'pending');
+            
             const { data } = await query;
             const list = document.getElementById('wdReviewList');
             list.innerHTML = data && data.length > 0 ? data.map(w => `
@@ -275,7 +275,8 @@
 
         // --- USERS ---
         window.loadUsers = async () => {
-            const { data } = await db.from('profiles').select('*').order('created_at', {ascending: false});
+            // FIX: Ditambah limit 100 agar tidak menarik semua user di database sekaligus
+            const { data } = await db.from('profiles').select('*').order('created_at', {ascending: false}).limit(100); 
             window.userMap = {};
             document.getElementById('userListArea').innerHTML = data.map(u => {
                 window.userMap[u.id] = u;
@@ -351,22 +352,23 @@
             document.getElementById('btn-acc-all-posts').style.display = status==='pending'?'block':'none';
             document.getElementById('search-post').value = ''; 
 
-            // Tarik data postingan
-            const { data: postsData } = await db.from('posts').select('*').eq('status', status).order('created_at', {ascending: false});
+            // FIX: Menggunakan Relasi JOIN dan Limit 50, tidak lagi menarik seluruh data profil!
+            const { data: postsData, error } = await db.from('posts')
+                .select(`
+                    *,
+                    profiles ( username )
+                `)
+                .eq('status', status)
+                .order('created_at', {ascending: false})
+                .limit(50);
             
-            // Tarik data profiles (untuk mencocokkan user_id menjadi username yang asli)
-            const { data: profilesData } = await db.from('profiles').select('id, username');
-            const profileMap = {};
-            if(profilesData) {
-                profilesData.forEach(pr => profileMap[pr.id] = pr.username);
-            }
+            if (error) console.error("Error fetching posts:", error);
 
             document.getElementById('postReviewList').innerHTML = postsData && postsData.length > 0 ? postsData.map(p => {
-                // Deteksi username: cek bawaan post dulu, kalau tidak ada, pakai mapping ID, kalau tidak ada juga pakai Anonim
-                const dUsername = p.username || profileMap[p.user_id] || 'Anonim';
+                // Menarik username secara aman dari relasi JOIN atau fallback ke data lama
+                const dUsername = p.username || (p.profiles && p.profiles.username) || 'Anonim';
                 const dCaption = p.caption && p.caption !== 'undefined' ? p.caption : '';
                 
-                // Variabel untuk fitur search bar
                 const searchStr = `${dUsername.toLowerCase()} ${dCaption.toLowerCase()}`;
                 
                 return `
@@ -404,7 +406,8 @@
             document.getElementById('tab-music-aktif').className = status==='approved'?'btn btn-acc':'btn btn-inactive';
             document.getElementById('btn-acc-all-music').style.display = status==='pending'?'block':'none';
             
-            const { data } = await db.from('songs').select('*').eq('status', status).order('id', {ascending: false});
+            // FIX: Ditambah limit 50
+            const { data } = await db.from('songs').select('*').eq('status', status).order('id', {ascending: false}).limit(50);
             
             document.getElementById('musicReviewList').innerHTML = data && data.length > 0 ? data.map(s => `
                 <div class="glass-card">
@@ -435,6 +438,8 @@
         };
 
         async function updateStats() {
+            // Catatan: Jika aplikasi sudah sangat besar, bagian ini bisa dipindah menggunakan RPC function di Supabase
+            // agar tidak menarik seluruh data coins ke browser. Untuk sekarang masih cukup aman.
             const { data } = await db.from('profiles').select('coins');
             document.getElementById('s-users').innerText = data ? data.length : 0;
             document.getElementById('s-coins').innerText = data ? data.reduce((a,b) => a + (b.coins || 0), 0) : 0;

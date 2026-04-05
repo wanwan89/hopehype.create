@@ -112,6 +112,14 @@ const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
 async function getCachedProfile(userId) {
   const key = `hh_profile_${userId}`;
+  
+  // CEK DULU: Apakah data sudah ada di penyimpanan sementara browser?
+  const cachedData = sessionStorage.getItem(key);
+  if (cachedData) {
+      return JSON.parse(cachedData); // Kalau ada, pakai data ini. Egress = 0!
+  }
+
+  // KALAU TIDAK ADA: Baru minta ke Supabase
   const { data, error } = await sb.from('profiles').select('username, avatar_url, role, coins, total_gift_sent, level').eq('id', userId).single();
   if (data) {
       sessionStorage.setItem(key, JSON.stringify(data));
@@ -497,30 +505,48 @@ function checkLevelUp(totalGiftSent) {
     return { level: 1, name: "NEWBIE", color: "#FFFFFF" };
 }
 
-// 8. LOGIKA SEND GIFT 
+// 8. LOGIKA SEND GIFT (SUDAH DIPERBAIKI)
 async function sendGift(giftName, harga, giftId) {
     if (!selectedTargetId) return alert("Pilih target!");
     const coinDisplay = document.getElementById('user-coins');
     let saldoSkrg = parseInt(coinDisplay.innerText.replace(/[,.]/g, ''));
-    if (saldoSkrg < harga) return alert("Koin kurang!");
+    
+    // FIX 1: Pastikan harga dibaca murni sebagai ANGKA (Integer)
+    let hargaGift = parseInt(harga); 
+
+    if (saldoSkrg < hargaGift) return alert("Koin kurang!");
     
     try {
-        const { data: tData } = await sb.from('profiles').select('coins').eq('id', selectedTargetId).single();
-        await sb.from('profiles').update({ coins: (tData.coins || 0) + harga }).eq('id', selectedTargetId);
-        
-        let newTotalGift = myTotalGiftSent + harga;
+        // FIX 2: Hitung progres level SAYA duluan
+        let newTotalGift = parseInt(myTotalGiftSent) + hargaGift;
         let levelData = checkLevelUp(newTotalGift);
         let oldLevel = myLevel;
         
+        // FIX 3: Update data SAYA ke database lebih dulu
         const { error: updateErr } = await sb.from('profiles').update({ 
-            coins: saldoSkrg - harga,
+            coins: saldoSkrg - hargaGift,
             total_gift_sent: newTotalGift,
             level: levelData.level
         }).eq('id', MY_USER_ID);
 
-        if (updateErr) return alert("Error database!");
+        if (updateErr) {
+            console.error("Error Simpan DB:", updateErr);
+            return alert("Gagal menyimpan Level! Pastikan kolom 'total_gift_sent' (integer) dan 'level' (integer) sudah kamu buat di tabel profiles Supabase.");
+        }
         
-        coinDisplay.innerText = (saldoSkrg - harga).toLocaleString();
+        // FIX 4: Update target dibungkus try-catch tersendiri. 
+        // Jika diblokir oleh RLS Supabase, level kamu tidak akan ikut gagal tersimpan.
+        try {
+            const { data: tData } = await sb.from('profiles').select('coins').eq('id', selectedTargetId).single();
+            if (tData) {
+                await sb.from('profiles').update({ coins: parseInt(tData.coins || 0) + hargaGift }).eq('id', selectedTargetId);
+            }
+        } catch (targetErr) {
+            console.log("Koin target gagal ditambah (mungkin karena limitasi RLS keamanan), tapi levelmu sudah aman tersimpan.");
+        }
+        
+        // Update UI Lokal
+        coinDisplay.innerText = (saldoSkrg - hargaGift).toLocaleString();
         myTotalGiftSent = newTotalGift; 
         myLevel = levelData.level;
         sessionStorage.removeItem(`hh_profile_${MY_USER_ID}`); 
@@ -528,31 +554,22 @@ async function sendGift(giftName, harga, giftId) {
         updateLevelProgressUI(); 
         toggleGiftDrawer();      
         
+        // Kirim Notifikasi Sistem & Animasi
         const teksPengumuman = ` ${myUsername} mengirim ${giftName} ke ${selectedTargetName}!`;
         await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM_GIFT", text: teksPengumuman, role: giftId.toString() }]);
 
         if (myLevel > oldLevel) {
             const teksLevelUp = `SELAMAT! ${myUsername} telah naik ke Level ${myLevel} (${levelData.name})!`;
             await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: teksLevelUp, role: "admin" }]);
-            
-            // MAIN KAN EFEK LANGSUNG KALAU TEMBUS LEVEL 4 ATAU 5 SAAT NGEGIFT
-            if (myLevel >= 4) {
-                playVIPEntrance(myUsername, myLevel);
-            }
+            if (myLevel >= 4) playVIPEntrance(myUsername, myLevel);
         }
 
         if (typeof confetti !== 'undefined') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
         playGiftAnimation(giftId);
 
-        const chatBox = document.getElementById('chat-box');
-        if (chatBox) {
-            const div = document.createElement('div'); 
-            div.className = 'msg system';
-            div.innerHTML = `<span style="color: #f1c40f; font-weight: bold;">${teksPengumuman}</span>`;
-            chatBox.appendChild(div); 
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-    } catch (e) { alert("Error sistem gift: " + e.message); }
+    } catch (e) { 
+        alert("Error sistem gift: " + e.message); 
+    }
 }
 
 function fixMobileHeight() { document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`); }

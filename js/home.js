@@ -259,7 +259,7 @@ if (avatar && avatarMenu) {
 }
 
 // =======================
-// SETTINGS MODAL + PROFILE
+// SETTINGS MODAL + PROFILE (EGRESS FIX 🛡️)
 // =======================
 const settingsBtn = document.getElementById("settingsBtn");
 const settingsModal = document.getElementById("settingsModal");
@@ -271,7 +271,7 @@ const avatarUpload = document.getElementById("avatarUpload");
 const avatarOptions = document.querySelectorAll("#avatarOptions .avatar-choice");
 
 let selectedAvatar = null;
-let uploadedAvatarData = null;
+let uploadedAvatarFile = null; // KITA SIMPAN FILE ASLINYA, BUKAN BASE64
 
 if (settingsBtn && settingsModal) {
   settingsBtn.addEventListener("click", () => {
@@ -296,30 +296,33 @@ if (settingsModal) {
 avatarOptions.forEach((img) => {
   img.addEventListener("click", () => {
     selectedAvatar = img.getAttribute("src");
-    uploadedAvatarData = null;
+    uploadedAvatarFile = null;
     if (avatarPreview) avatarPreview.src = selectedAvatar;
     avatarOptions.forEach((i) => i.classList.remove("selected"));
     img.classList.add("selected");
   });
 });
 
+// PREVIEW FOTO TANPA BASE64 (0 EGRESS)
 if (avatarUpload && avatarPreview) {
   avatarUpload.addEventListener("change", (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      uploadedAvatarData = event.target.result;
-      selectedAvatar = null;
-      avatarPreview.src = uploadedAvatarData;
-      avatarOptions.forEach((i) => i.classList.remove("selected"));
-    };
-    reader.readAsDataURL(file);
+    
+    uploadedAvatarFile = file;
+    selectedAvatar = null;
+    avatarPreview.src = URL.createObjectURL(file); // Cepat & ringan
+    avatarOptions.forEach((i) => i.classList.remove("selected"));
   });
 }
 
+// PROSES SIMPAN (UPLOAD KE CLOUDINARY DULU)
 if (saveSettings) {
   saveSettings.addEventListener("click", async () => {
+    const originalText = saveSettings.innerText;
+    saveSettings.innerText = "Menyimpan...";
+    saveSettings.disabled = true;
+
     try {
       const { data: { user }, error: userError } = await db.auth.getUser();
       if (userError || !user) { showToast("Belum login", "Silakan login dulu", "warning"); return; }
@@ -327,15 +330,33 @@ if (saveSettings) {
       const newUsername = newUsernameInput?.value?.trim();
       if (!newUsername) { showToast("Username kosong", "Isi username terlebih dahulu", "warning"); return; }
 
-      const avatarToSave = uploadedAvatarData || selectedAvatar || null;
-      const updatePayload = { username: newUsername };
-      if (avatarToSave) updatePayload.avatar_url = avatarToSave;
+      let finalAvatarUrl = selectedAvatar;
 
+      // JIKA USER UPLOAD FOTO DARI HP -> KIRIM KE CLOUDINARY
+      if (uploadedAvatarFile) {
+        showToast("Sedang mengunggah foto...", "Mohon tunggu", "info");
+        const fd = new FormData();
+        fd.append("file", uploadedAvatarFile);
+        fd.append("upload_preset", "post_hope"); // Sesuai preset Cloudinary kamu
+
+        const res = await fetch("https://api.cloudinary.com/v1_1/dhhmkb8kl/image/upload", { 
+          method: "POST", body: fd 
+        });
+        
+        if (!res.ok) throw new Error("Gagal mengunggah gambar ke server");
+        const cData = await res.json();
+        finalAvatarUrl = cData.secure_url; // Dapat deh link iritnya!
+      }
+
+      const updatePayload = { username: newUsername };
+      if (finalAvatarUrl) updatePayload.avatar_url = finalAvatarUrl;
+
+      // UPDATE KE SUPABASE (HANYA MENGIRIM LINK URL PENDEK)
       const { data: updatedProfile, error } = await db
         .from("profiles")
         .update(updatePayload)
         .eq("id", user.id)
-        .select("username, role, avatar_url") // Spesifik (Hemat Egress)
+        .select("username, role, avatar_url") 
         .single();
 
       if (error) {
@@ -343,23 +364,16 @@ if (saveSettings) {
         throw error;
       }
 
-      // [FIX EGRESS] Update Cache setelah edit
       sessionStorage.setItem(`hh_profile_${user.id}`, JSON.stringify(updatedProfile));
-
-      const usernameEl = document.getElementById("username");
-      const avatarEl = document.getElementById("avatar");
-
-      if (usernameEl) usernameEl.innerHTML = `${updatedProfile.username} ${getUserBadge(updatedProfile.role)}`;
-      if (avatarEl && updatedProfile.avatar_url) {
-        const cacheBuster = `?t=${Date.now()}`;
-        const finalSrc = updatedProfile.avatar_url.startsWith("data:image") ? updatedProfile.avatar_url : updatedProfile.avatar_url + cacheBuster;
-        avatarEl.src = finalSrc;
-        if (avatarPreview) avatarPreview.src = finalSrc;
-      }
-      if (settingsModal) settingsModal.classList.remove("active");
-      showToast("Profil diperbarui", "Foto dan username berhasil diubah!", "success");
+      
+      showToast("Profil diperbarui", "Foto berhasil diubah!", "success");
+      setTimeout(() => location.reload(), 1200); // Reload biar bersih semuanya
+      
     } catch (err) {
       showToast("Gagal update profil", err.message, "error");
+    } finally {
+      saveSettings.innerText = originalText;
+      saveSettings.disabled = false;
     }
   });
 }

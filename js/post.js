@@ -32,16 +32,49 @@ let replyToUsername = null;
 let giftState = { postId: null, creatorId: null, creatorName: "", userCoins: 0, selectedAmount: 0 };
 
 // =======================
-// CACHE HELPER
+// CACHE HELPER (OPTIMIZED)
 // =======================
 async function getMyProfile(userId) {
   const cacheKey = `hh_profile_${userId}`;
   const cached = sessionStorage.getItem(cacheKey);
   if (cached) return JSON.parse(cached);
   
-  const { data } = await supabaseClient.from("profiles").select("username, role, coins, avatar_url").eq("id", userId).single();
+  // FIX: Hanya ambil kolom yang ditampilkan
+  const { data } = await supabaseClient.from("profiles")
+    .select("username, role, coins, avatar_url")
+    .eq("id", userId)
+    .single();
+    
   if (data) sessionStorage.setItem(cacheKey, JSON.stringify(data));
   return data;
+}
+
+// [FUNGSI BARU DITAMBAHKAN] - Panggil ini saat tombol Ganti Foto Profil diklik!
+async function updateProfileAvatar(file) {
+  if (!file) return;
+  showNotif("Sedang mengunggah foto profil...", "info");
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return openLogin();
+
+    // 1. Upload ke Cloudinary biar IRIT
+    const cData = await uploadImageToCloudinary(file);
+    const linkIrit = cData.secure_url;
+
+    // 2. Simpan link-nya aja ke Supabase
+    const { error } = await supabaseClient
+      .from("profiles")
+      .update({ avatar_url: linkIrit })
+      .eq("id", session.user.id);
+
+    if (error) throw error;
+
+    sessionStorage.removeItem(`hh_profile_${session.user.id}`);
+    showNotif("Foto profil diperbarui!", "success");
+    setTimeout(() => location.reload(), 1000);
+  } catch (err) {
+    showNotif("Gagal update profil: " + err.message, "error");
+  }
 }
 
 // =======================
@@ -121,22 +154,33 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// =======================
-// FETCH POSTS (SAFE BULK METHOD 🔥)
-// =======================
-async function fetchPosts(category = "all") {
-  const gallery = document.getElementById("mainGallery");
-  if (!gallery) return;
+// Taruh variabel ini di paling atas file JS kamu (di luar fungsi)
+let isFetchingPosts = false;
 
+async function fetchPosts(category = "all") {
+  // [ANTI-SPAM] Cegah pemanggilan ganda yang bikin egress bengkak 2x lipat
+  if (isFetchingPosts) return;
+  isFetchingPosts = true;
+
+  const gallery = document.getElementById("mainGallery");
+  if (!gallery) { isFetchingPosts = false; return; }
+
+  // Tampilkan loading skeleton
   gallery.innerHTML = `<div class="skeleton-wrapper" style="grid-column: 1/-1; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; width: 100%;">${Array(6).fill(0).map(() => `<div class="skeleton-card"><div class="skeleton-shimmer"></div></div>`).join("")}</div>`;
 
   try {
-    // 1. Tarik data post & profile pakai cara lama yang terbukti aman
+    // [FIX 1] !inner DIHAPUS DISINI. Diganti jadi 'profiles' biasa biar gak ngilangin PP.
     let query = supabaseClient
       .from("posts")
-      .select(`id, image_url, bio, created_at, creator_id, category, profiles!inner (id, username, role, avatar_url)`)
+      .select(`
+        id, 
+        image_url, 
+        created_at, 
+        creator_id, 
+        profiles (username, role, avatar_url)
+      `) 
       .eq("status", "approved")
-      .limit(15); 
+      .limit(10); 
 
     if (category && category !== "all") {
       query = query.ilike("category", `%${category.trim()}%`);
@@ -149,39 +193,36 @@ async function fetchPosts(category = "all") {
 
     if (!posts || posts.length === 0) {
       gallery.innerHTML = '<p style="color:gray; text-align:center; grid-column:1/-1; padding:50px;">Tidak ada postingan.</p>';
+      isFetchingPosts = false;
       return;
     }
 
-    // --- AWAL TEKNIK BULK FETCH ---
-    // Kumpulin semua ID post yang lagi ditampilin di layar
     const postIds = posts.map(p => p.id);
 
-    // Minta data semua like & komen HANYA UNTUK post yang tampil (cuma butuh 1x request paralel!)
+    // [FIX 2] MINIMALIST ENGAGEMENT: Tarik post_id saja, jangan yang lain!
     const [likesRes, commentsRes] = await Promise.all([
       supabaseClient.from("likes").select("post_id").in("post_id", postIds),
       supabaseClient.from("comments").select("post_id").in("post_id", postIds)
     ]);
 
-    // Kita hitung jumlahnya pakai JavaScript (Sangat cepat dan hemat Egress)
     const likeCounts = {};
     const commentCounts = {};
     postIds.forEach(id => { likeCounts[id] = 0; commentCounts[id] = 0; });
     
-    if (likesRes.data) likesRes.data.forEach(l => likeCounts[l.post_id]++);
-    if (commentsRes.data) commentsRes.data.forEach(c => commentCounts[c.post_id]++);
-    // --- AKHIR TEKNIK BULK FETCH ---
+    if (likesRes.data) likesRes.data.forEach(l => { if(likeCounts[l.post_id] !== undefined) likeCounts[l.post_id]++; });
+    if (commentsRes.data) commentsRes.data.forEach(c => { if(commentCounts[c.post_id] !== undefined) commentCounts[c.post_id]++; });
 
+    // --- RENDER ---
     posts.forEach((post) => {
       const card = document.createElement("div");
       card.className = "card post-fade-in";
+      
       const userRole = (post.profiles?.role || "user").toLowerCase().trim();
       const badge = getUserBadge(userRole);
+      
+      // Pakai tanggal pendek: "6 Apr"
       const dateObj = new Date(post.created_at);
-      const formattedDate = dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
-
-      // Masukkan angka hasil hitungan JS tadi ke sini
-      const likeCount = likeCounts[post.id] || 0;
-      const commentCount = commentCounts[post.id] || 0;
+      const formattedDate = dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
 
       card.innerHTML = `
         <div class="slider">
@@ -192,16 +233,15 @@ async function fetchPosts(category = "all") {
           <h2 class="name" onclick="window.location.href='data.html?id=${post.creator_id}'" style="cursor:pointer; display:flex; align-items:center;">
             ${post.profiles?.username || "User"} ${badge} 
           </h2>
-          <p class="bio">${post.bio || ""}</p>
           <div class="post-date-wrapper" style="margin-bottom: 8px;">
-            <span style="font-size: 11px; color: rgba(255,255,255,0.6);">Diunggah pada ${formattedDate}</span>
+            <span style="font-size: 10px; color: rgba(255,255,255,0.5);">Diunggah ${formattedDate}</span>
           </div>
           <div class="actions">
             <a href="data.html?id=${post.creator_id}" class="primary">Detail</a>
             <div class="engagement-group">
                <button class="icon-btn gift-btn" data-post="${post.id}" data-creator="${post.creator_id}" data-name="${post.profiles?.username}"><svg viewBox="0 0 24 24" class="icon"><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg></button>
-               <button class="icon-btn like-btn" data-post="${post.id}" data-creator="${post.creator_id}"><svg viewBox="0 0 24 24" class="icon heart"><path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/></svg><span class="like-count">${likeCount}</span></button>
-               <button class="icon-btn comment-toggle" data-post="${post.id}" data-creator="${post.creator_id}"><svg viewBox="0 0 24 24" class="icon"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg><span class="comment-count">${commentCount}</span></button>
+               <button class="icon-btn like-btn" data-post="${post.id}" data-creator="${post.creator_id}"><svg viewBox="0 0 24 24" class="icon heart"><path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/></svg><span class="like-count">${likeCounts[post.id]}</span></button>
+               <button class="icon-btn comment-toggle" data-post="${post.id}" data-creator="${post.creator_id}"><svg viewBox="0 0 24 24" class="icon"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg><span class="comment-count">${commentCounts[post.id]}</span></button>
             </div>
           </div>
         </div>`;
@@ -210,9 +250,10 @@ async function fetchPosts(category = "all") {
 
     initGiftButtons(); initLikeButtons(); initComments(); loadLikes(); 
   } catch (err) {
-    // Aku tambahin console.error biar kalau error lagi, kita bisa tahu penyebab pastinya di Inspect Element
-    console.error("Gagal load post:", err);
-    gallery.innerHTML = '<p style="color:red; text-align:center; grid-column:1/-1;">Gagal memuat data.</p>';
+    console.error(err);
+  } finally {
+    // Selesai, buka kunci agar bisa dipanggil lagi nanti
+    isFetchingPosts = false;
   }
 }
 
@@ -293,7 +334,6 @@ function showBigImage(imageName) {
   const container = document.getElementById("giftAnimationContainer");
   if (!container) return;
   container.innerHTML = `<img src="${imageName}" class="gift-main-img">`;
-  confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 999999 });
   setTimeout(() => { container.innerHTML = ""; }, 2500);
 }
 
@@ -304,7 +344,7 @@ function closeGiftSheet() {
 }
 
 // =======================
-// COMMENTS SYSTEM
+// COMMENTS SYSTEM (OPTIMIZED)
 // =======================
 function initComments() {
   const modal = document.getElementById("commentModal");
@@ -362,7 +402,11 @@ async function loadCommentsStructured() {
   const list = document.querySelector(".comment-list");
   if (!list || !currentPostId) return;
   
-  const { data, error } = await supabaseClient.from("comments").select("id, content, created_at, user_id, parent_id, reply_to_username, profiles(id, username, avatar_url, role)").eq("post_id", currentPostId).order("created_at", { ascending: true });
+  // FIX: Seleksi kolom profil agar tidak boros
+  const { data } = await supabaseClient.from("comments")
+    .select("id, content, created_at, user_id, parent_id, reply_to_username, profiles(id, username, avatar_url, role)")
+    .eq("post_id", currentPostId)
+    .order("created_at", { ascending: true });
   
   const ownerId = currentPostCreator;
   list.innerHTML = (!data || data.length === 0) ? "<li style='text-align:center; padding:20px; color:#aaa;'>Belum ada komentar.</li>" : "";
@@ -386,11 +430,11 @@ async function loadCommentsStructured() {
 
       childs.forEach(c => replyWrap.appendChild(createComment(c, true, ownerId)));
 
-      toggleBtn.addEventListener("click", () => {
+      toggleBtn.onclick = () => {
         const isHidden = replyWrap.style.display === "none";
         replyWrap.style.display = isHidden ? "block" : "none";
         toggleBtn.innerHTML = isHidden ? `——— Sembunyikan balasan` : `——— Lihat ${childs.length} balasan`;
-      });
+      };
 
       wrap.appendChild(toggleBtn);
       wrap.appendChild(replyWrap);
@@ -427,12 +471,10 @@ function initLikeButtons() {
       let currentCount = parseInt(newBtn.querySelector(".like-count").textContent || "0");
 
       if (isCurrentlyLiked) {
-        // UNLIKE (Update UI duluan, database jalan di background)
         newBtn.classList.remove("liked");
         newBtn.querySelector(".like-count").textContent = Math.max(0, currentCount - 1);
-        await supabaseClient.from("likes").delete().eq("post_id", pId).eq("user_id", session.user.id);
+        await supabaseClient.from("likes").delete().match({ post_id: pId, user_id: session.user.id });
       } else {
-        // LIKE
         newBtn.classList.add("liked");
         newBtn.querySelector(".like-count").textContent = currentCount + 1;
         await supabaseClient.from("likes").insert({ post_id: pId, user_id: session.user.id });
@@ -444,7 +486,6 @@ function initLikeButtons() {
   });
 }
 
-// [FULL FIX EGRESS] 1x Request Borongan buat nyalain tombol merah
 async function loadLikes() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) return; 
@@ -454,23 +495,16 @@ async function loadLikes() {
 
   const postIds = Array.from(likeBtns).map(btn => btn.dataset.post);
 
-  try {
-    const { data } = await supabaseClient
-      .from("likes")
+  // FIX: Gunakan .in untuk request borongan tunggal
+  const { data } = await supabaseClient.from("likes")
       .select("post_id")
       .eq("user_id", session.user.id)
       .in("post_id", postIds);
 
-    const myLikedPostIds = data ? data.map(row => String(row.post_id)) : [];
-
-    likeBtns.forEach(btn => {
-      if (myLikedPostIds.includes(btn.dataset.post)) {
-        btn.classList.add("liked");
-      }
-    });
-  } catch (err) {
-    console.error("Gagal cek likes:", err);
-  }
+  const myLikedPostIds = data ? data.map(row => String(row.post_id)) : [];
+  likeBtns.forEach(btn => {
+      if (myLikedPostIds.includes(btn.dataset.post)) btn.classList.add("liked");
+  });
 }
 
 async function updateCommentCount(postId) {
@@ -528,7 +562,6 @@ function initCloseButtons() {
 }
 
 function initRealtime() {
-  // Hanya nunggu update comment aja, dan kalau ada trigger update UI.
   supabaseClient.channel("updates").on("postgres_changes", { event: "*", schema: "public", table: "comments" }, (payload) => {
     if(payload.new && payload.new.post_id) updateCommentCount(payload.new.post_id);
   }).subscribe();

@@ -113,16 +113,20 @@ const sb = supabase.createClient(supabaseUrl, supabaseKey);
 async function getCachedProfile(userId) {
   const key = `hh_profile_${userId}`;
   
-  // CEK DULU: Apakah data sudah ada di penyimpanan sementara browser?
   const cachedData = sessionStorage.getItem(key);
   if (cachedData) {
-      return JSON.parse(cachedData); // Kalau ada, pakai data ini. Egress = 0!
+      const parsedData = JSON.parse(cachedData);
+      // FIX CACHE COLLISION: Pastikan cache lama dari home.js punya atribut level
+      // Kalau level nggak ada di cache, jangan pakai cache ini!
+      if (parsedData.level !== undefined && parsedData.total_gift_sent !== undefined) {
+          return parsedData; 
+      }
   }
 
-  // KALAU TIDAK ADA: Baru minta ke Supabase
+  // KALAU TIDAK ADA ATAU CACHE TIDAK LENGKAP: Baru minta ke Supabase
   const { data, error } = await sb.from('profiles').select('username, avatar_url, role, coins, total_gift_sent, level').eq('id', userId).single();
   if (data) {
-      sessionStorage.setItem(key, JSON.stringify(data));
+      sessionStorage.setItem(key, JSON.stringify(data)); // Simpan yang udah lengkap
       return data;
   }
   return null;

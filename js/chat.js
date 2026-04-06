@@ -868,23 +868,42 @@ window.openEditProfile = async () => {
 const saveBtnElement = document.getElementById("btn-save-bio");
 if (saveBtnElement) {
   saveBtnElement.onclick = async () => {
-    saveBtnElement.innerText = "Menyimpan..."; saveBtnElement.disabled = true;
+    saveBtnElement.innerText = "Menyimpan..."; 
+    saveBtnElement.disabled = true;
+    
     try {
-      const { error } = await supabase.from("profiles").update({
+      // Kita tambahkan .select() di akhir untuk memaksa Supabase mengembalikan data jika sukses
+      const { data, error } = await supabase.from("profiles").update({
           age: Number(document.getElementById("in-umur")?.value) || null, 
           gender: document.getElementById("in-gender")?.value, 
           zodiac: document.getElementById("in-zodiak")?.value, 
           hobby: document.getElementById("in-hobi")?.value, 
           occupation: document.getElementById("in-kerja")?.value,
-        }).eq("id", currentUser.id);
+        }).eq("id", currentUser.id).select(); 
+        
       if (error) throw error;
       
-      // [FIX CACHE]: Hapus cache lama biar sistem tahu biodatamu udah diupdate!
+      // Detektor Kebohongan: Kalau balikan datanya kosong, berarti Supabase nge-blok!
+      if (!data || data.length === 0) {
+          showToast("Gagal! Database menolak data. Cek izin (RLS) di Supabase.");
+          saveBtnElement.innerText = "Simpan & Cari"; 
+          saveBtnElement.disabled = false;
+          return; // Jangan tutup modal kalau gagal tersimpan
+      }
+      
+      // Hapus cache agar saat "Cari Doi" diklik, aplikasi mengambil data yang baru
       sessionStorage.removeItem(`hh_profile_${currentUser.id}`);
       
-      showToast("Biodata berhasil disimpan!"); window.closeBioModal();
-    } catch (err) { showToast("Gagal simpan biodata"); } 
-    finally { saveBtnElement.innerText = "Simpan & Cari"; saveBtnElement.disabled = false; }
+      showToast("Biodata BENERAN berhasil disimpan!"); 
+      window.closeBioModal();
+      
+    } catch (err) { 
+      console.error("Error simpan bio:", err);
+      showToast("Gagal simpan: " + err.message); 
+    } finally { 
+      saveBtnElement.innerText = "Simpan & Cari"; 
+      saveBtnElement.disabled = false; 
+    }
   };
 }
 

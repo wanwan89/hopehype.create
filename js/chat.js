@@ -879,8 +879,7 @@ if (saveBtnElement) {
           umur: Number(document.getElementById("in-umur")?.value) || null, 
           gender: document.getElementById("in-gender")?.value, 
           zodiak: document.getElementById("in-zodiak")?.value, 
-          hobi: document.getElementById("in-hobi")?.value,
-          pekerjaan: document.getElementById("in-kerja")?.value // <-- Ini sudah diaktifkan!
+          hobi: document.getElementById("in-hobi")?.value
         }).eq("id", currentUser.id).select(); 
         
       if (error) throw error;
@@ -892,8 +891,17 @@ if (saveBtnElement) {
           return; 
       }
       
-      sessionStorage.removeItem(`hh_profile_${currentUser.id}`);
-      showToast("Biodata  berhasil disimpan!"); 
+      // --- ZERO EGRESS SOLUTION: SUNTIK CACHE SECARA LOKAL ---
+      // Daripada dihapus, kita timpa cache lama dengan data balikan dari database
+      const cacheKey = `hh_profile_${currentUser.id}`;
+      const existingCache = JSON.parse(sessionStorage.getItem(cacheKey) || "{}");
+      
+      // Gabungkan data lama dengan data profil yang baru di-update (termasuk gender)
+      const updatedCache = { ...existingCache, ...data[0] };
+      sessionStorage.setItem(cacheKey, JSON.stringify(updatedCache));
+      // -------------------------------------------------------
+      
+      showToast("Biodata berhasil disimpan!"); 
       window.closeBioModal();
       
     } catch (err) { 
@@ -921,15 +929,31 @@ function tampilkanDoiCard(doi) {
 const btnCariDoiActual = document.getElementById("btn-sidebar-search");
 if (btnCariDoiActual) {
   btnCariDoiActual.onclick = async () => {
+    // Kembali pakai cache, jadi 0 Egress ke database untuk cek profil sendiri!
     const myProfile = await getCachedProfile(currentUser.id); 
-    if (!myProfile?.gender) { showToast("Setel GENDER kamu dulu di Edit Biodata!"); window.openEditProfile(); return; }
+    
+    if (!myProfile?.gender) { 
+        showToast("Setel GENDER kamu dulu di Edit Biodata!"); 
+        window.openEditProfile(); 
+        return; 
+    }
+    
     closeSidebar();
-    const loadingOverlay = document.createElement("div"); loadingOverlay.className = "searching-overlay"; loadingOverlay.innerHTML = `<div class="radar"></div><div class="searching-text">MENCARI PASANGAN...</div><div style="font-size:10px; margin-top:10px; opacity:0.6;">Menghubungkan ke server HopeTalk...</div>`; document.body.appendChild(loadingOverlay);
+    const loadingOverlay = document.createElement("div"); 
+    loadingOverlay.className = "searching-overlay"; 
+    loadingOverlay.innerHTML = `<div class="radar"></div><div class="searching-text">MENCARI PASANGAN...</div><div style="font-size:10px; margin-top:10px; opacity:0.6;">Menghubungkan ke server HopeTalk...</div>`; 
+    document.body.appendChild(loadingOverlay);
+    
     const lawanJenis = myProfile.gender === "Pria" ? "Wanita" : "Pria";
+    
     setTimeout(async () => {
+      // Ini tetep butuh request ke DB ya, karena kita nyari user lain, bukan user sendiri
       const { data: users } = await supabase.from("profiles").select("*").neq("id", currentUser.id).eq("gender", lawanJenis);
       loadingOverlay.remove();
-      if (!users || users.length === 0) { showToast(`Waduh, belum ada ${lawanJenis} yang tersedia.`); return; }
+      if (!users || users.length === 0) { 
+          showToast(`Waduh, belum ada ${lawanJenis} yang tersedia.`); 
+          return; 
+      }
       tampilkanDoiCard(users[Math.floor(Math.random() * users.length)]);
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
     }, 2500);

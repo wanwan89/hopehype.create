@@ -149,7 +149,8 @@
         <span id="hopeTalkBadge" class="chat-badge" style="display:none;">0</span>
       </a>
 
-      <a href="lobby.html" target="_blank" class="recent-card sawer-link">
+<a href="lobby.html" class="recent-card sawer-link">
+
         <div class="logo saweria-logo" style="display: flex; align-items: center; justify-content: center;">
           <img src="asets/png/saweria.png" alt="Saweria" style="width: 42px; height: 42px; border-radius: 10px; object-fit: cover; display: block;">
         </div>
@@ -157,54 +158,8 @@
           <h4>Voicehype</h4>
         </div>
       </a>
-
       
     </div>
-
-    <script>
-      window.__lc = window.__lc || {};
-      window.__lc.license = 19516665;
-      window.__lc.integration_name = "manual_channels";
-      window.__lc.product_name = "livechat";
-      (function (n, t, c) {
-        function i(n) {
-          return e._h ? e._h.apply(null, n) : e._q.push(n);
-        }
-        var e = {
-          _q: [],
-          _h: null,
-          _v: "2.0",
-          on: function () {
-            i(["on", c.call(arguments)]);
-          },
-          once: function () {
-            i(["once", c.call(arguments)]);
-          },
-          off: function () {
-            i(["off", c.call(arguments)]);
-          },
-          get: function () {
-            if (!e._h) throw new Error("[LiveChatWidget] You can't use getters before load.");
-            return i(["get", c.call(arguments)]);
-          },
-          call: function () {
-            i(["call", c.call(arguments)]);
-          },
-          init: function () {
-            // <--- FIXED: Added 'init' here
-            var n = t.createElement("script");
-            n.async = !0;
-            n.type = "text/javascript";
-            n.src = "https://cdn.livechatinc.com/tracking.js";
-            t.head.appendChild(n);
-          },
-        };
-        if (!n.__lc.async) {
-          e.init();
-        }
-        n.LiveChatWidget = n.LiveChatWidget || e;
-      })(window, document, [].slice);
-    </script>
     <div id="settingsModal" class="modal">
       <div class="modal-content">
         <span id="closeSettings">X</span>

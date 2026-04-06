@@ -855,13 +855,16 @@ if (confirmDeleteBtn) {
 
 window.openEditProfile = async () => {
   const modal = document.getElementById("bio-modal"); if (!modal) return; modal.style.display = "flex";
-  const { data: profile } = await supabase.from("profiles").select("age, gender, zodiac, hobby, occupation").eq("id", currentUser.id).single();
+  
+  // Tambahkan 'pekerjaan' di dalam select()
+  const { data: profile } = await supabase.from("profiles").select("umur, gender, zodiak, hobi, pekerjaan").eq("id", currentUser.id).single();
+  
   if (profile) {
-    if (document.getElementById("in-umur")) document.getElementById("in-umur").value = profile.age || "";
+    if (document.getElementById("in-umur")) document.getElementById("in-umur").value = profile.umur || "";
     if (document.getElementById("in-gender")) document.getElementById("in-gender").value = profile.gender || "Pria";
-    if (document.getElementById("in-zodiak")) document.getElementById("in-zodiak").value = profile.zodiac || "Aries";
-    if (document.getElementById("in-hobi")) document.getElementById("in-hobi").value = profile.hobby || "";
-    if (document.getElementById("in-kerja")) document.getElementById("in-kerja").value = profile.occupation || "";
+    if (document.getElementById("in-zodiak")) document.getElementById("in-zodiak").value = profile.zodiak || "Aries";
+    if (document.getElementById("in-hobi")) document.getElementById("in-hobi").value = profile.hobi || "";
+    if (document.getElementById("in-kerja")) document.getElementById("in-kerja").value = profile.pekerjaan || ""; // <-- Ini dipanggil!
   }
 };
 
@@ -872,29 +875,25 @@ if (saveBtnElement) {
     saveBtnElement.disabled = true;
     
     try {
-      // Kita tambahkan .select() di akhir untuk memaksa Supabase mengembalikan data jika sukses
       const { data, error } = await supabase.from("profiles").update({
-          age: Number(document.getElementById("in-umur")?.value) || null, 
+          umur: Number(document.getElementById("in-umur")?.value) || null, 
           gender: document.getElementById("in-gender")?.value, 
-          zodiac: document.getElementById("in-zodiak")?.value, 
-          hobby: document.getElementById("in-hobi")?.value, 
-          occupation: document.getElementById("in-kerja")?.value,
+          zodiak: document.getElementById("in-zodiak")?.value, 
+          hobi: document.getElementById("in-hobi")?.value,
+          pekerjaan: document.getElementById("in-kerja")?.value // <-- Ini sudah diaktifkan!
         }).eq("id", currentUser.id).select(); 
         
       if (error) throw error;
       
-      // Detektor Kebohongan: Kalau balikan datanya kosong, berarti Supabase nge-blok!
       if (!data || data.length === 0) {
           showToast("Gagal! Database menolak data. Cek izin (RLS) di Supabase.");
           saveBtnElement.innerText = "Simpan & Cari"; 
           saveBtnElement.disabled = false;
-          return; // Jangan tutup modal kalau gagal tersimpan
+          return; 
       }
       
-      // Hapus cache agar saat "Cari Doi" diklik, aplikasi mengambil data yang baru
       sessionStorage.removeItem(`hh_profile_${currentUser.id}`);
-      
-      showToast("Biodata BENERAN berhasil disimpan!"); 
+      showToast("Biodata  berhasil disimpan!"); 
       window.closeBioModal();
       
     } catch (err) { 

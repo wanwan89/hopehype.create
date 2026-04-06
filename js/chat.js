@@ -53,12 +53,15 @@ const searchBtn = document.getElementById("sticker-search-btn");
 // ===== [FIX EGRESS] CACHE HELPER =====
 async function getCachedProfile(userId) {
   const key = `hh_profile_${userId}`;
-  const cached = sessionStorage.getItem(key);
+  
+  // GANTI JADI localStorage
+  const cached = localStorage.getItem(key);
   if (cached) return JSON.parse(cached);
   
-  // [FIX]: Tambahin 'gender' di query select biar kebawa ke cache
   const { data } = await supabase.from('profiles').select('username, avatar_url, role, short_id, gender').eq('id', userId).single();
-  if (data) sessionStorage.setItem(key, JSON.stringify(data));
+  
+  // GANTI JADI localStorage
+  if (data) localStorage.setItem(key, JSON.stringify(data));
   return data;
 }
 
@@ -875,15 +878,18 @@ if (saveBtnElement) {
     saveBtnElement.disabled = true;
     
     try {
+      // 1. Kirim data ke Supabase pakai nama kolom yang sesuai database
       const { data, error } = await supabase.from("profiles").update({
           umur: Number(document.getElementById("in-umur")?.value) || null, 
           gender: document.getElementById("in-gender")?.value, 
           zodiak: document.getElementById("in-zodiak")?.value, 
           hobi: document.getElementById("in-hobi")?.value
+          // pekerjaan: document.getElementById("in-kerja")?.value // <-- Hapus tanda // di awal kalau kolomnya udah ada
         }).eq("id", currentUser.id).select(); 
         
       if (error) throw error;
       
+      // 2. Detektor Kebohongan (Cek apakah kena blokir RLS)
       if (!data || data.length === 0) {
           showToast("Gagal! Database menolak data. Cek izin (RLS) di Supabase.");
           saveBtnElement.innerText = "Simpan & Cari"; 
@@ -891,17 +897,19 @@ if (saveBtnElement) {
           return; 
       }
       
-      // --- ZERO EGRESS SOLUTION: SUNTIK CACHE SECARA LOKAL ---
-      // Daripada dihapus, kita timpa cache lama dengan data balikan dari database
+      // 3. ZERO EGRESS SOLUTION: Suntik ingatan permanen (localStorage)
       const cacheKey = `hh_profile_${currentUser.id}`;
-      const existingCache = JSON.parse(sessionStorage.getItem(cacheKey) || "{}");
       
-      // Gabungkan data lama dengan data profil yang baru di-update (termasuk gender)
+      // Ambil ingatan lama
+      const existingCache = JSON.parse(localStorage.getItem(cacheKey) || "{}");
+      
+      // Gabungkan ingatan lama dengan data biodata yang baru barusan diketik
       const updatedCache = { ...existingCache, ...data[0] };
-      sessionStorage.setItem(cacheKey, JSON.stringify(updatedCache));
-      // -------------------------------------------------------
       
-      showToast("Biodata berhasil disimpan!"); 
+      // Simpan kembali secara permanen (Biar nggak amnesia pas web ditutup)
+      localStorage.setItem(cacheKey, JSON.stringify(updatedCache));
+      
+      showToast("Biodata berhasil disimpan permanen!"); 
       window.closeBioModal();
       
     } catch (err) { 

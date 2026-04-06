@@ -863,3 +863,34 @@ body {
 @keyframes badgePop { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
 .chat-message .content { margin-bottom: 5px; }
+  /* Fix untuk Input Chat di HopeTalk/HypeVoice */
+    #chat-input {
+        /* 1. Ganti Jenis Font */
+        font-family: 'Poppins', 'Inter', 'Segoe UI', sans-serif !important;
+        font-size: 15px !important;
+        
+        /* 2. FIX WARNA TEKS: Pakai warna gelap karena background input kamu putih */
+        color: #1a1a1a !important; 
+        background-color: #ffffff !important;
+        
+        /* 3. Atur Jarak agar teks tidak tenggelam atau terpotong */
+        padding: 10px 15px !important;
+        line-height: 1.2 !important;
+        
+        /* 4. Hilangkan border bawaan agar lebih clean */
+        border: none !important;
+        outline: none !important;
+    }
+
+    /* Agar saat ngetik warna teks tetap konsisten */
+    #chat-input:focus {
+        color: #1a1a1a !important;
+    }
+
+    /* Style untuk tulisan "Ketik komentar..." */
+    #chat-input::placeholder {
+        font-family: 'Poppins', sans-serif;
+        color: #999999 !important;
+        font-size: 14px;
+        opacity: 0.8;
+    }

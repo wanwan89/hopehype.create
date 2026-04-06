@@ -158,7 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
 let isFetchingPosts = false;
 
 async function fetchPosts(category = "all") {
-  // [ANTI-SPAM] Cegah pemanggilan ganda yang bikin egress bengkak 2x lipat
+  // [ANTI-SPAM] Cegah pemanggilan ganda
   if (isFetchingPosts) return;
   isFetchingPosts = true;
 
@@ -169,12 +169,13 @@ async function fetchPosts(category = "all") {
   gallery.innerHTML = `<div class="skeleton-wrapper" style="grid-column: 1/-1; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; width: 100%;">${Array(6).fill(0).map(() => `<div class="skeleton-card"><div class="skeleton-shimmer"></div></div>`).join("")}</div>`;
 
   try {
-    // [FIX 1] !inner DIHAPUS DISINI. Diganti jadi 'profiles' biasa biar gak ngilangin PP.
+    // Pastikan 'bio' tetap ada di select
     let query = supabaseClient
       .from("posts")
       .select(`
         id, 
         image_url, 
+        bio,
         created_at, 
         creator_id, 
         profiles (username, role, avatar_url)
@@ -199,7 +200,6 @@ async function fetchPosts(category = "all") {
 
     const postIds = posts.map(p => p.id);
 
-    // [FIX 2] MINIMALIST ENGAGEMENT: Tarik post_id saja, jangan yang lain!
     const [likesRes, commentsRes] = await Promise.all([
       supabaseClient.from("likes").select("post_id").in("post_id", postIds),
       supabaseClient.from("comments").select("post_id").in("post_id", postIds)
@@ -220,22 +220,28 @@ async function fetchPosts(category = "all") {
       const userRole = (post.profiles?.role || "user").toLowerCase().trim();
       const badge = getUserBadge(userRole);
       
-      // Pakai tanggal pendek: "6 Apr"
       const dateObj = new Date(post.created_at);
       const formattedDate = dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
 
+      // POSISI DIUBAH: Name -> Bio -> Date -> Actions
       card.innerHTML = `
         <div class="slider">
           <img src="${post.image_url || "asets/png/karya.png"}" class="active" loading="lazy">
           <div class="watermark-overlay"><img src="asets/svg/watermark.svg"></div>
         </div>
         <div class="overlay">
-          <h2 class="name" onclick="window.location.href='data.html?id=${post.creator_id}'" style="cursor:pointer; display:flex; align-items:center;">
+          <h2 class="name" onclick="window.location.href='data.html?id=${post.creator_id}'" style="cursor:pointer; display:flex; align-items:center; margin-bottom: 6px;">
             ${post.profiles?.username || "User"} ${badge} 
           </h2>
-          <div class="post-date-wrapper" style="margin-bottom: 8px;">
+
+          <p class="post-bio" style="font-size: 13px; color: #eee; margin-bottom: 4px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 400;">
+            ${post.bio || ""}
+          </p>
+
+          <div class="post-date-wrapper" style="margin-bottom: 12px;">
             <span style="font-size: 10px; color: rgba(255,255,255,0.5);">Diunggah ${formattedDate}</span>
           </div>
+
           <div class="actions">
             <a href="data.html?id=${post.creator_id}" class="primary">Detail</a>
             <div class="engagement-group">
@@ -252,7 +258,6 @@ async function fetchPosts(category = "all") {
   } catch (err) {
     console.error(err);
   } finally {
-    // Selesai, buka kunci agar bisa dipanggil lagi nanti
     isFetchingPosts = false;
   }
 }

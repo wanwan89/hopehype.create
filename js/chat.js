@@ -8,7 +8,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== Audio Config =====
 const sendSound = new Audio("asets/sound/send.mp3");
-const receiveSound = new Audio("aset/sound/receive.mp3");
+const receiveSound = new Audio("asets/sound/receive.mp3");
 
 // ===== Global State =====
 let currentRoomId = "room-1";

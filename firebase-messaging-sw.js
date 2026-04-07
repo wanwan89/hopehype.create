@@ -1,4 +1,7 @@
-// KONFIGURASI FIREBASE (PROJECT: HOPECREATE)
+// FIREBASE SERVICE WORKER (FIX EVALUATION)
+importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
+importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
+
 const firebaseConfig = {
   apiKey: "AIzaSyCRnwkcydQK2LkdQj7H3WmIKdEyZ9giD9I",
   authDomain: "hopecreate-b21d8.firebaseapp.com",
@@ -9,42 +12,20 @@ const firebaseConfig = {
   measurementId: "G-K92MZL0TEP"
 };
 
-// Inisialisasi
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+// Inisialisasi Firebase di Worker
+firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-async function aktifkanNotifikasi(userId) {
-    try {
-        // 1. Minta Izin ke User
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-            console.log("Izin notifikasi ditolak user.");
-            return;
-        }
+// Menangani notifikasi saat browser ditutup (Background)
+messaging.onBackgroundMessage(function(payload) {
+  console.log('[sw.js] Pesan Background Diterima: ', payload);
+  
+  const notificationTitle = payload.notification.title || "HopeCreate Notif";
+  const notificationOptions = {
+    body: payload.notification.body || "Ada kabar baru buat kamu!",
+    icon: '/asets/png/book.png', 
+    badge: '/asets/png/book.png'
+  };
 
-        // 2. Ambil Token dengan VAPID Key BARU kamu
-        const token = await messaging.getToken({ 
-            vapidKey: 'BJ-fSO8MZxyXnvFL6AGRf4dsl-9lWXAONrtSaI6T-4SGM0UxojM5vVfpu9YIE_kiIbBBxl4RWUkYykx-8n3etYo' 
-        });
-
-        if (token) {
-            console.log("Token Baru Berhasil Didapat: ", token);
-            
-            // 3. Simpan/Update ke Supabase
-            const { error } = await db.from('user_push_tokens').upsert({ 
-                user_id: userId, 
-                token: token 
-            });
-
-            if (error) {
-                console.error("Gagal simpan ke Supabase: ", error.message);
-            } else {
-                console.log("Notifikasi HopeHype Aktif! ✅ Data masuk Supabase.");
-            }
-        }
-    } catch (err) {
-        console.error("Error Sistem Notif: ", err);
-    }
-}
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});

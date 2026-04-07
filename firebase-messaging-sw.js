@@ -1,4 +1,4 @@
-// FIREBASE SERVICE WORKER (FXIX EVALUATION)
+// FIREBASE SERVICE WORKER (FIX DUPLIKAT NOTIF)
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
@@ -16,16 +16,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// Menangani notifikasi saat browser ditutup (Background)
+// Menangani pesan saat di Background
 messaging.onBackgroundMessage(function(payload) {
   console.log('[sw.js] Pesan Background Diterima: ', payload);
   
-  const notificationTitle = payload.notification.title || "HopeCreate Notif";
-  const notificationOptions = {
-    body: payload.notification.body || "Ada kabar baru buat kamu!",
-    icon: '/asets/png/book.png', 
-    badge: '/asets/png/book.png'
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  // KITA HAPUS BAGIAN SHOW NOTIFICATION DI SINI
+  // Biarkan Chrome & Firebase yang otomatis nampilin pop-up-nya!
 });

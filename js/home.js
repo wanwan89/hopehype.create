@@ -1102,8 +1102,7 @@ async function aktifkanNotifikasi(userId) {
     console.log("Sedang mengambil token...");
 const token = await messaging.getToken({ 
   serviceWorkerRegistration: registration,
-  vapidKey: 'BJ-fSO8MZxyXnvFL6AGRf4dsl-9lWXAONrtSaI6T-4SGM0UxojM5vVfpu9YIE_kiIbBBxl4RWUkYykx-8n3etYo'
-
+vapidKey: 'BJ-fS0SMZxgXvwFL8AGRf4dxL9ijWXAONctGak7-4SGM0UxojMSeWpufhfE_kiIbBBx4iFtWUkYyks-8n36ztYo'
 });
 
 

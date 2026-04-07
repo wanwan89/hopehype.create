@@ -1085,9 +1085,8 @@ async function aktifkanNotifikasi(userId) {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       const token = await messaging.getToken({ 
-        vapidKey: 'BDoa_aQrYbedKPJponhlFsbtBJ7iUSNROpebG1DrA3R9v7kiC6ZyXjOY63t7XQ8zC_aHCbLTEwU7gh75zIfx' 
-      });
-
+  vapidKey: 'BJ-fSO8MZxyXnvFL6AGRf4dsl-9lWXAONrtSaI6T-4SG M0UxojM5vVfpu9YIE_kiIbBBxl4RWUkYykx-8n3etYo' 
+});
       if (token) {
         // Simpan ke database Supabase
         await db.from('user_push_tokens').upsert({ 
@@ -1110,3 +1109,12 @@ async function aktifkanNotifikasi(userId) {
     }
   }
 }
+// TES PAKSA: Panggil fungsi begitu halaman terbuka
+db.auth.getUser().then(({ data: { user } }) => {
+  if (user) {
+    console.log("User terdeteksi, menjalankan sistem notif...");
+    aktifkanNotifikasi(user.id);
+  } else {
+    console.log("User belum login, notif tidak diaktifkan.");
+  }
+});

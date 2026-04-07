@@ -323,7 +323,6 @@ async function playSong(song) {
   audio.pause();
 
   // 2. UNLOCK YOUTUBE UNTUK BROWSER HP (WAJIB DI SINI)
-  // Pancing browser biar nge-izinin audio YouTube bunyi sebelum fetch API
   if (isYTReady && ytPlayer && typeof ytPlayer.unMute === 'function') {
     ytPlayer.unMute();
     ytPlayer.setVolume(100);
@@ -343,18 +342,13 @@ async function playSong(song) {
       
       if (data.items && data.items.length > 0) {
         const videoId = data.items[0].id.videoId;
-        console.log("Dapet ID YouTube:", videoId); 
-
         if (isYTReady && ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
-          // Panggil loadVideoById, dia bakal otomatis muter karena udah di-unlock di atas
           ytPlayer.loadVideoById(videoId);
           console.log("✅ SUKSES! Memutar FULL YouTube.");
         } else {
-          console.warn("⚠️ Mesin YouTube belum siap! Terpaksa putar preview.");
           throw new Error("YT Not Ready");
         }
       } else {
-        console.warn("⚠️ Data YouTube kosong / Limit API habis.");
         throw new Error("Video tidak ditemukan");
       }
     } catch (e) {
@@ -366,17 +360,16 @@ async function playSong(song) {
     const ytId = String(song.id).replace('yt-', '');
     if (isYTReady && ytPlayer) { 
       ytPlayer.loadVideoById(ytId); 
-      // playVideo udah dipanggil di pancingan atas, tapi panggil lagi buat pastiin
       ytPlayer.playVideo(); 
     }
   } 
   else {
     // LAGU LOKAL (DARI SUPABASE)
     audio.src = song.audio_src.startsWith("http") ? song.audio_src : `songs/${song.audio_src}`;
-    audio.play();
+    audio.play().catch(err => console.log("Autoplay blocked/error:", err));
   }
 
-  // 4. TIMER PLAY COUNT
+  // 4. TIMER PLAY COUNT (60 Detik)
   playTimer = setTimeout(async () => {
     const isPlayingAudio = !audio.paused;
     const isPlayingYT = isYTReady && ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === 1;
@@ -393,12 +386,57 @@ async function playSong(song) {
   if (miniTitle) miniTitle.textContent = song.title;
   if (miniArtist) miniArtist.textContent = song.artist;
 
+  // --- [BARU] MEDIA SESSION API (ANTI-MATI PAS TEKAN HOME) ---
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: song.title,
+      artist: song.artist,
+      artwork: [
+        { src: song.cover_url, sizes: '96x96',   type: 'image/png' },
+        { src: song.cover_url, sizes: '512x512', type: 'image/png' },
+      ]
+    });
+
+    // Kontrol dari Notifikasi HP
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (song.source === 'youtube' || song.source === 'api') ytPlayer.playVideo();
+      else audio.play();
+      if (playBtn) playBtn.textContent = "pause";
+    });
+
+    navigator.mediaSession.setActionHandler('pause', () => {
+      if (song.source === 'youtube' || song.source === 'api') ytPlayer.pauseVideo();
+      else audio.pause();
+      if (playBtn) playBtn.textContent = "play_arrow";
+    });
+
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+       window.skipNext(); 
+    });
+
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+       window.skipPrevious(); 
+    });
+  }
+
+  // 6. UPDATE BACKGROUND & STYLE
   document.body.style.background = `linear-gradient(to bottom, rgba(13, 17, 23, 0.9), #0d1117), url('${song.cover_url}') center/cover no-repeat`;
 
   document.querySelectorAll(".playlist-card").forEach((card, idx) => {
     card.style.borderColor = idx === currentSongIndex ? "#1f3cff" : "#30363d";
   });
 }
+window.skipNext = function() {
+  currentSongIndex++;
+  if (currentSongIndex >= currentSongsList.length) currentSongIndex = 0;
+  playSong(currentSongsList[currentSongIndex]);
+};
+
+window.skipPrevious = function() {
+  currentSongIndex--;
+  if (currentSongIndex < 0) currentSongIndex = currentSongsList.length - 1;
+  playSong(currentSongsList[currentSongIndex]);
+};
 
 // ================= EVENT LISTENER AUDIO LOKAL =================
 if (audio) {
@@ -505,6 +543,7 @@ if (progressContainer) {
     }
   });
 }
+ 
 
 // ================= UPDATE PLAY COUNT (FIX EGRESS) =================
 async function updatePlayCount(songId) {
@@ -929,6 +968,26 @@ window.closeUpload = function () {
     if (status) status.innerText = "";
   }, 400);
 };
+// Tambahin ini di paling bawah music.js
+window.showSection = function(sectionId) {
+  // Sembunyiin semua section utama (misal .playlist-grid dan header)
+  // TAPI JANGAN sembunyiin #miniPlayer dan #yt-player-hidden
+  const grid = document.getElementById("playlistGrid");
+  const header = document.querySelector(".header-container");
+  
+  if (sectionId === 'home') {
+    grid.style.display = 'grid';
+    header.style.display = 'block';
+    // Sembunyiin halaman lain kalau lo punya (misal profile/upload)
+  } else {
+    grid.style.display = 'none';
+    header.style.display = 'none';
+    // Tampilkan sectionId yang lain
+  }
+  
+  console.log("Pindah ke halaman:", sectionId);
+};
+
 
 async function initApp() {
   await loadMusicLibrary();

@@ -1090,8 +1090,8 @@ async function aktifkanNotifikasi(userId) {
     // 2. Ambil Token
     console.log("Sedang mengambil token...");
     const token = await messaging.getToken({ 
-      vapidKey: 'BJ-fSO8MZxyXnvFL6AGRf4dsl-9lWXAONrtSaI6T-4SGM0UxojM5vVfpu9YIE_kiIbBBxl4RWUkYykx-8n3etYo' 
-    });
+  vapidKey: 'BJ-fSO8MZxyXnvFL6AGRf4dsl-9lWXAONrtSaI6T-4SGM0UxojM5vVfpu9YIE_kiIbBBxl4RWUkYykx-8n3etYo' 
+});
 
     if (token) {
       // 3. Simpan ke Supabase

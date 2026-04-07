@@ -102,6 +102,32 @@ function formatTime(dateString) {
   return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 }
 
+// ==========================================
+// [FIX NOTIF BYPASS] FUNGSI PEMICU PUSH NOTIF
+// ==========================================
+function triggerPushNotif(teksPesan) {
+  const partnerId = getPartnerIdFromRoom(currentRoomId);
+  if (!partnerId) return; // Batal kalau ini chat global
+
+  fetch("https://hqetnqnvmdxdgfnnluew.supabase.co/functions/v1/send-chat-notif", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}` 
+    },
+    body: JSON.stringify({
+      record: {
+        sender_id: currentUser.id,
+        receiver_id: partnerId,
+        content: teksPesan
+      }
+    })
+  })
+  .then(() => console.log("Sinyal Push Notif Terkirim! 🚀"))
+  .catch(err => console.error("Gagal kirim sinyal notif:", err));
+}
+// ==========================================
+
 function showToast(message) {
   let container = document.getElementById("toast");
   if (!container) {
@@ -522,7 +548,13 @@ async function Message() {
     if (error) throw error;
 
     const tempEl = document.getElementById(`msg-${tempId}`);
-    if (tempEl && data) { tempEl.id = `msg-${data.id}`; updateMessageStatusUI(data.id, "sent"); }
+    if (tempEl && data) { 
+        tempEl.id = `msg-${data.id}`; 
+        updateMessageStatusUI(data.id, "sent"); 
+        
+        // [FIX NOTIF BYPASS]
+        triggerPushNotif(text); 
+    }
 
   } catch (err) {
     showToast("Gagal mengirim pesan");
@@ -547,7 +579,13 @@ async function sendAudioMessage(url) {
     const { data, error } = await supabase.from("messages").insert([{ message: "🎤 Voice Note", audio_url: url, user_id: currentUser.id, username: myUsername, room_id: currentRoomId, status: "sent" }]).select().single();
     if (error) throw error;
     const tempEl = document.getElementById(`msg-${tempId}`);
-    if (tempEl && data) { tempEl.id = `msg-${data.id}`; updateMessageStatusUI(data.id, "sent"); }
+    if (tempEl && data) { 
+        tempEl.id = `msg-${data.id}`; 
+        updateMessageStatusUI(data.id, "sent"); 
+        
+        // [FIX NOTIF BYPASS]
+        triggerPushNotif("🎤 Voice Note");
+    }
   } catch (err) { showToast("Gagal mengirim VN ke chat"); }
 }
 
@@ -823,9 +861,16 @@ async function sendSticker(url) {
     renderMessage({ id: tempId, message: "", user_id: currentUser.id, username: profile?.username || "User", avatar: profile?.avatar_url || "asets/png/profile.png", role: profile?.role || "user", sticker_url: url, created_at: new Date().toISOString(), room_id: currentRoomId, status: "sending" });
     scrollToBottom(); sendSound.play().catch(() => {});
     const { data, error } = await supabase.from("messages").insert([{ message: "", user_id: currentUser.id, username: profile?.username || "User", avatar: profile?.avatar_url || "asets/png/profile.png", role: profile?.role || "user", sticker_url: url, room_id: currentRoomId, status: "sent" }]).select().single();
+    
     if (error) throw error;
     const tempEl = document.getElementById(`msg-${tempId}`);
-    if (tempEl && data) { tempEl.id = `msg-${data.id}`; updateMessageStatusUI(data.id, "sent"); }
+    if (tempEl && data) { 
+        tempEl.id = `msg-${data.id}`; 
+        updateMessageStatusUI(data.id, "sent"); 
+        
+        // [FIX NOTIF BYPASS]
+        triggerPushNotif("🖼 Mengirim Stiker");
+    }
     if (stickerMenu) stickerMenu.style.display = "none";
   } catch (err) { showToast("Gagal kirim stiker"); }
 }

@@ -105,6 +105,9 @@ function formatTime(dateString) {
 // ==========================================
 // [FIX NOTIF BYPASS] FUNGSI PEMICU PUSH NOTIF
 // ==========================================
+// ==========================================
+// [FIX NOTIF BYPASS] FUNGSI PEMICU PUSH NOTIF
+// ==========================================
 function triggerPushNotif(teksPesan) {
   const partnerId = getPartnerIdFromRoom(currentRoomId);
   if (!partnerId) return; // Batal kalau ini chat global
@@ -123,10 +126,14 @@ function triggerPushNotif(teksPesan) {
       }
     })
   })
-  .then(() => console.log("Sinyal Push Notif Terkirim! 🚀"))
+  .then(res => res.text()) // BACA JAWABAN DARI FIREBASE
+  .then(text => {
+      console.log("JAWABAN ASLI SERVER FIREBASE:", text);
+      // Kalau berhasil, biasanya ada tulisan 'projects/hopecreate...'
+  })
   .catch(err => console.error("Gagal kirim sinyal notif:", err));
 }
-// ==========================================
+
 
 function showToast(message) {
   let container = document.getElementById("toast");

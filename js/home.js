@@ -1063,13 +1063,12 @@ async function aktifkanNotifikasi(userId) {
     return;
   }
 
-  // PAKAI CONFIG PROJECT 'HOPECREATE' (JANGAN DICAMPUR!)
   const firebaseConfig = {
     apiKey: "AIzaSyCRnwkcydQK2LkdQj7H3WmIKdEyZ9giD9I",
     authDomain: "hopecreate-b21d8.firebaseapp.com",
-    projectId: "hopecreate-b21d8", // <--- Pastikan ini hopecreate
+    projectId: "hopecreate-b21d8",
     storageBucket: "hopecreate-b21d8.firebasestorage.app",
-    messagingSenderId: "313569930727", // <--- Pastikan ini angka 3135...
+    messagingSenderId: "313569930727",
     appId: "1:313569930727:web:afd1e2757cd0fe0867a142"
   };
 
@@ -1081,27 +1080,33 @@ async function aktifkanNotifikasi(userId) {
 
     const messaging = firebase.messaging();
     
-    // Minta izin
+    // 1. Minta izin
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
         console.log("Izin ditolak. Klik ikon gembok di browser lalu 'Reset Permission'!");
         return;
     }
 
-    // Ambil Token
+    // 2. Ambil Token
+    console.log("Sedang mengambil token...");
     const token = await messaging.getToken({ 
       vapidKey: 'BJ-fSO8MZxyXnvFL6AGRf4dsl-9lWXAONrtSaI6T-4SGM0UxojM5vVfpu9YIE_kiIbBBxl4RWUkYykx-8n3etYo' 
     });
 
     if (token) {
-      await db.from('user_push_tokens').upsert({ 
+      // 3. Simpan ke Supabase
+      const { error } = await db.from('user_push_tokens').upsert({ 
         user_id: userId, 
         token: token 
       });
-      console.log("Notifikasi HopeHype Aktif! ✅");
+
+      if (error) {
+        console.error("Gagal simpan ke Supabase:", error.message);
+      } else {
+        console.log("Notifikasi HopeHype Aktif! ✅ Token sudah di database.");
+      }
     }
   } catch (err) {
     console.error("DEBUG ERROR NOTIF:", err.message);
-    // Jika masih 403, jalankan 'Ritual Hapus Database' di console eruda
   }
 }

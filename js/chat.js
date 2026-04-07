@@ -1104,6 +1104,24 @@ window.playVN = function (btn, audioUrl) {
   audio.play().then(() => { playerContainer.classList.add("playing"); btn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`; }).catch(() => showToast("Gagal memutar pesan suara."));
   audio.onended = () => { playerContainer.classList.remove("playing"); btn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="white"><path d="M8 5v14l11-7z"/></svg>`; window.currentAudio = null; };
 };
+// CEK APAKAH WEB DIBUKA DARI NOTIFIKASI
+const urlParams = new URLSearchParams(window.location.search);
+const fromId = urlParams.get('from');
+
+if (fromId) {
+    // Tunggu sebentar sampai sistem login & profil beres
+    setTimeout(() => {
+        // Panggil fungsi buka chat kamu (di kodinganmu namanya bukaChatPribadi)
+        // Kita butuh Nama Partner, tapi karena di URL cuma ada ID, 
+        // fungsi bukaChatPribadi kamu bakal otomatis load profilnya nanti.
+        if (typeof bukaChatPribadi === "function") {
+            bukaChatPribadi(fromId, "Memuat chat..."); 
+            // Hapus parameter dari URL biar kalau di-refresh gak buka chat itu lagi
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, 2000);
+}
+
 
 async function init() {
   try {

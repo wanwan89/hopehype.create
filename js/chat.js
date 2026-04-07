@@ -50,18 +50,34 @@ const stickerList = document.getElementById("sticker-list");
 const searchInput = document.getElementById("sticker-search-input");
 const searchBtn = document.getElementById("sticker-search-btn");
 
-// ===== [FIX EGRESS] CACHE HELPER =====
+// MEMORI INTERNAL BIAR GAK TANYA DATABASE TERUS
+const profileCache = new Map();
+
 async function getCachedProfile(userId) {
-  const key = `hh_profile_${userId}`;
-  
-  // GANTI JADI localStorage
-  const cached = localStorage.getItem(key);
-  if (cached) return JSON.parse(cached);
-  
-  const { data } = await supabase.from('profiles').select('username, avatar_url, role, short_id, gender').eq('id', userId).single();
-  
-  // GANTI JADI localStorage
-  if (data) localStorage.setItem(key, JSON.stringify(data));
+  // 1. Cek di Memori RAM dulu (Paling cepat)
+  if (profileCache.has(userId)) return profileCache.get(userId);
+
+  // 2. Cek di LocalStorage (Pernah diambil di sesi sebelumnya gak?)
+  const localKey = `hh_profile_${userId}`;
+  const cached = localStorage.getItem(localKey);
+  if (cached) {
+    const data = JSON.parse(cached);
+    profileCache.set(userId, data); // Simpan ke RAM
+    return data;
+  }
+
+  // 3. TERAKHIR: Baru tanya ke Database (Gunakan Irit-irit)
+  console.log("Minta data ke DB untuk user:", userId);
+  const { data } = await supabase
+    .from('profiles')
+    .select('username, avatar_url, role, short_id, gender')
+    .eq('id', userId)
+    .single();
+
+  if (data) {
+    localStorage.setItem(localKey, JSON.stringify(data));
+    profileCache.set(userId, data);
+  }
   return data;
 }
 
@@ -596,7 +612,7 @@ async function sendAudioMessage(url) {
   } catch (err) { showToast("Gagal mengirim VN ke chat"); }
 }
 
-// ===== [FULL FIX EGRESS] Realtime Messages =====
+// ===== [FULL FIX EGRESS & ANTI-LOOP] =====
 function initRealtimeMessages() {
   if (!currentUser) return;
   if (messageChannel) { supabase.removeChannel(messageChannel); messageChannel = null; }
@@ -606,15 +622,16 @@ function initRealtimeMessages() {
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async (payload) => {
         const newMsg = payload.new;
         
-        // HANYA reload sidebar kalau ini pesan pribadi ke kita (BUKAN Chat Global)
+        // 1. Sidebar CUMA update kalau pesan itu PRIVATE untuk kita (Hemat Egress)
         if (newMsg.room_id.startsWith("pv_") && newMsg.room_id.includes(currentUser.id)) {
             triggerLoadChatHistory(); 
         }
 
+        // 2. Jika pesan di ruangan yang sedang dibuka
         if (newMsg.room_id === currentRoomId) {
           if (document.getElementById(`msg-${newMsg.id}`)) return;
           
-          // RAKIT DATA TANPA DATABASE QUERY (SANGAT IRIT)
+          // AMBIL DARI CACHE (Mencegah request profiles?select berulang)
           const senderProfile = await getCachedProfile(newMsg.user_id);
           newMsg.profiles = {
               username: senderProfile?.username || "User",
@@ -622,21 +639,7 @@ function initRealtimeMessages() {
               role: senderProfile?.role || "user"
           };
 
-          if (newMsg.reply_to) {
-              const repliedEl = document.getElementById(`msg-${newMsg.reply_to}`);
-              if (repliedEl) {
-                  newMsg.reply_to_msg = {
-                      id: newMsg.reply_to,
-                      username: repliedEl.querySelector(".username")?.innerText || "User",
-                      message: repliedEl.querySelector(".text")?.innerText || ""
-                  };
-              } else {
-                   // Kalau apes pesannya nggak ada di layar, baru query kecil (sangat jarang terjadi)
-                   const { data: rep } = await supabase.from("messages").select("id, username, message").eq("id", newMsg.reply_to).maybeSingle();
-                   newMsg.reply_to_msg = rep;
-              }
-          }
-
+          // Render Pesan
           if (newMsg.user_id === currentUser.id) {
             const tempEl = document.querySelector(`[id^="msg-temp-"]`);
             if (tempEl) tempEl.remove();
@@ -644,14 +647,35 @@ function initRealtimeMessages() {
           } else {
             renderMessage(newMsg);
             receiveSound.play().catch(() => {});
-            await supabase.from("messages").update({ status: document.hidden ? "delivered" : "read" }).eq("id", newMsg.id);
+            
+            // UPDATE STATUS (Hanya panggil jika status belum 'read')
+            // Ini untuk mencegah looping update status
+            if (newMsg.status !== "read" && !document.hidden) {
+                await supabase.from("messages")
+                    .update({ status: "read" })
+                    .eq("id", newMsg.id);
+            }
           }
           scrollToBottom();
         }
       })
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, (payload) => {
         const updated = payload.new;
-        if (updated.room_id === currentRoomId && updated.message === "Pesan ini telah dihapus") {
+        const old = payload.old; 
+
+        // ANTI-LOOP: Jika yang berubah CUMA status (centang), jangan render ulang profil/pesan!
+        // Ini kunci biar tab Network kamu sepi.
+        if (updated.status !== old?.status && Object.keys(updated).length <= 5) {
+             if (updated.user_id === currentUser.id) {
+                updateMessageStatusUI(updated.id, updated.status || "sent");
+             }
+             return; // STOP DI SINI
+        }
+
+        if (updated.room_id !== currentRoomId) return;
+
+        // Logika Pesan Dihapus
+        if (updated.message === "Pesan ini telah dihapus") {
           const msgEl = document.getElementById(`msg-${updated.id}`);
           if (msgEl) {
             const textEl = msgEl.querySelector(".text");
@@ -659,13 +683,13 @@ function initRealtimeMessages() {
               textEl.innerHTML = "<i>Pesan ini telah dihapus</i>";
               textEl.style.color = "#aaa";
               textEl.querySelectorAll("img, .vn-custom-player").forEach(m => m.remove());
-              const badge = msgEl.querySelector(".message-reactions");
-              if(badge) badge.remove();
             }
           }
-          return; 
+          return;
         }
-        if (updated.room_id === currentRoomId && updated.reactions) {
+        
+        // Logika Reaksi (Emoji)
+        if (updated.reactions) {
           const msgEl = document.getElementById(`msg-${updated.id}`);
           if (msgEl) {
             const contentEl = msgEl.querySelector(".content");
@@ -673,15 +697,21 @@ function initRealtimeMessages() {
             const reactionIcons = Object.values(reactions);
             const uniqueIcons = [...new Set(reactionIcons)].slice(0, 3);
             const reactionsHtml = uniqueIcons.length > 0 ? `${uniqueIcons.join("")} ${reactionIcons.length > 1 ? `<span style="font-size:9px; color:#999; margin-left:2px;">${reactionIcons.length}</span>` : ""}` : "";
+            
             let badgeEl = contentEl.querySelector(".message-reactions");
             if (reactionsHtml) {
-              if (!badgeEl) { badgeEl = document.createElement("div"); badgeEl.className = "message-reactions"; badgeEl.onclick = (e) => { e.stopPropagation(); window.openReactionMenu(updated.id, e); }; contentEl.insertBefore(badgeEl, contentEl.querySelector(".message-info")); }
-              badgeEl.innerHTML = reactionsHtml; contentEl.style.marginBottom = "12px";
-            } else { if (badgeEl) badgeEl.remove(); contentEl.style.marginBottom = "0"; }
+              if (!badgeEl) {
+                  badgeEl = document.createElement("div");
+                  badgeEl.className = "message-reactions";
+                  contentEl.insertBefore(badgeEl, contentEl.querySelector(".message-info"));
+              }
+              badgeEl.innerHTML = reactionsHtml;
+              contentEl.style.marginBottom = "15px";
+            } else if (badgeEl) {
+                badgeEl.remove();
+                contentEl.style.marginBottom = "5px";
+            }
           }
-        }
-        if (updated.room_id === currentRoomId && updated.user_id === currentUser.id) {
-          updateMessageStatusUI(updated.id, updated.status || "sent");
         }
       }).subscribe();
 }

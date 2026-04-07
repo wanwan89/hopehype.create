@@ -1,6 +1,47 @@
 let activeSongId = null;
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
+// ================= YOUTUBE API SETUP =================
+let ytPlayer;
+let isYTReady = false;
+const YOUTUBE_API_KEY = "AIzaSyBoh5i7piZl5mFqXM0XBpCzO_Qtu_TG-kQ";
+
+window.onYouTubeIframeAPIReady = function() {
+  ytPlayer = new YT.Player('yt-player-hidden', {
+    height: '300', width: '300',
+    videoId: 'dQw4w9WgXcQ', // Dummy video standby
+    playerVars: { 
+      'playsinline': 1, 
+      'controls': 0
+    },
+    events: {
+      'onReady': () => { 
+        isYTReady = true;
+        console.log("✅ Mesin YouTube SUDAH SIAP!"); 
+      },
+      'onStateChange': (event) => {
+        if (event.data === YT.PlayerState.ENDED) {
+          currentSongIndex++;
+          if (currentSongIndex < currentSongsList.length) playSong(currentSongsList[currentSongIndex]);
+          else { currentSongIndex = 0; playSong(currentSongsList[0]); }
+        }
+      }
+    }
+  });
+};
+
+// SUNTIK SCRIPT MANUAL BIAR TIMING PAS!
+if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  const firstScriptTag = document.getElementsByTagName('script')[0] || document.head;
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+}
+
+// ... lanjut kode lu ...
+
+
+// ================= BADGE SYSTEM =================
 function getUserBadge(role) {
   let badge = "";
 
@@ -75,40 +116,79 @@ let currentSongIndex = -1;
 
 // ================= 1. CORE FUNCTIONS (DATA & RENDER) =================
 async function loadMusicLibrary() {
+  console.log("1. Memulai loadMusicLibrary...");
   const { data: { user } } = await _supabase.auth.getUser();
 
-  // [FIX EGRESS]: Panggil kolom spesifik, dan jangan filter pakai .eq di child table (likes) karena bisa memfilter data lagu utamanya
+  console.log("2. Mengambil data dari Supabase...");
   const { data, error } = await _supabase
     .from("songs")
-    .select(`
-        id, title, artist, cover_url, audio_src, created_at, play_count, status, category,
-        comments(count),
-        likes(count),
-        user_liked:likes(user_id)
-    `)
+    .select(`id, title, artist, cover_url, audio_src, created_at, play_count, status, category, comments(count), likes(count), user_liked:likes(user_id)`)
     .eq("status", "approved")
     .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Gagal muat musik:", error.message);
-    return;
-  }
-
   const userId = user?.id;
-
-  allSongs = data.map((song) => {
-    // Cari apakah ada baris like dari user yang sedang login di array user_liked
+  const localSongs = data ? data.map((song) => {
     const userLikedIt = song.user_liked ? song.user_liked.some(l => l.user_id === userId) : false;
-
     return {
-      ...song,
-      comment_count: song.comments?.[0]?.count || 0,
-      like_count: song.likes?.[0]?.count || 0,
-      is_liked: userLikedIt
+      ...song, source: 'local', comment_count: song.comments?.[0]?.count || 0,
+      like_count: song.likes?.[0]?.count || 0, is_liked: userLikedIt
     };
-  });
+  }) : [];
 
+  console.log("3. Lagu lokal dapet:", localSongs.length);
+  allSongs = [...localSongs];
   renderPlaylist(allSongs);
+
+  console.log("4. Mencoba tembak YouTube API...");
+  try {
+    // ID PLAYLIST POP INDO HITS TERBARU (PASTI ADA)
+    // GANTI JADI INI:
+const MY_PLAYLIST = "PLFcGX84jKOu7DYhWdfpOfgDcEyRzTXFE9";
+
+    // Kita buat URL-nya pake URLSearchParams biar gak ada typo spasi atau karakter aneh
+    const params = new URLSearchParams({
+      part: 'snippet',
+      playlistId: MY_PLAYLIST,
+      maxResults: '50',
+      key: YOUTUBE_API_KEY
+    });
+
+    const ytApiUrl = `https://www.googleapis.com/youtube/v3/playlistItems?${params.toString()}`;
+
+    const res = await fetch(ytApiUrl);
+    console.log("5. Respon YouTube dapet, status:", res.status);
+    
+    const json = await res.json();
+    
+    if (json.items) {
+      console.log("6. Berhasil dapet", json.items.length, "lagu dari YouTube");
+      const apiSongs = json.items
+        .filter(item => item.snippet.title !== "Private video" && item.snippet.title !== "Deleted video")
+        .map((item) => {
+          let cleanTitle = item.snippet.title.replace(/\[.*?\]|\(.*?\)|Official|Video|Music|Audio|Lyrics|Lirik/gi, '').trim();
+          let channelName = item.snippet.videoOwnerChannelTitle ? item.snippet.videoOwnerChannelTitle.replace(' - Topic', '').replace('VEVO', '') : 'Unknown Artist';
+
+          return {
+            id: `yt-${item.snippet.resourceId.videoId}`,
+            title: cleanTitle,
+            artist: channelName,
+            cover_url: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || 'asets/png/music.png',
+            audio_src: '', 
+            source: 'youtube',
+            play_count: Math.floor(Math.random() * 5000), 
+            like_count: 0, comment_count: 0, is_liked: false, category: 'hits'
+          };
+        });
+
+      allSongs = [...localSongs, ...apiSongs];
+      renderPlaylist(allSongs);
+      console.log("7. ✅ SELESAI: Playlist Hybrid Rendered!");
+    } else {
+      console.error("⚠️ YouTube balikin data kosong. Cek pesan error ini:", json.error?.message);
+    }
+  } catch (err) {
+    console.error("❌ Error fetch YouTube:", err);
+  }
 }
 
 function renderPlaylist(songs) {
@@ -122,6 +202,12 @@ function renderPlaylist(songs) {
     card.className = `playlist-card ${isActive}`;
     card.dataset.songId = song.id; // Untuk referensi gampang
 
+    // --- LOGIKA HYBRID BADGE ---
+    const isApi = String(song.id).startsWith("api-") || song.source === 'youtube';
+    const badgeHtml = isApi 
+      ? `<span style="position:absolute; top:8px; left:8px; background:rgba(0, 210, 255, 0.9); color:white; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:bold; z-index:10; backdrop-filter:blur(4px);">HITS</span>`
+      : `<span style="position:absolute; top:8px; left:8px; background:rgba(255, 71, 87, 0.9); color:white; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:bold; z-index:10; backdrop-filter:blur(4px);">HYPE</span>`;
+
     const isLiked = song.is_liked;
     const heartIcon = isLiked ? "favorite" : "favorite_border";
     const activeClass = isLiked ? "is-liked" : "";
@@ -130,10 +216,27 @@ function renderPlaylist(songs) {
     const likes = (song.like_count || 0).toLocaleString("id-ID");
     const comments = (song.comment_count || 0).toLocaleString("id-ID");
 
-    card.innerHTML = `
-            <div class="card-cover-wrapper">
-                <img src="${song.cover_url}" alt="${song.title}" loading="lazy">
+    const interactionHtml = isApi 
+      ? `<div style="font-size:10px; color:#666; font-style:italic; margin-left:auto;">Official Music</div>`
+      : `
+        <div class="stat-group">
+            <div class="stat-item interactive ${activeClass}" onclick="event.stopPropagation(); window.handleLike(${song.id}, event)">
+                <span class="material-icons">${heartIcon}</span>
+                <span class="like-count-num">${likes}</span>
             </div>
+            <div class="stat-item interactive" onclick="event.stopPropagation(); window.openComments(${song.id})">
+                <span class="material-icons">chat_bubble_outline</span>
+                <span id="comment-count-${song.id}">${comments}</span>
+            </div>
+        </div>
+      `;
+
+    // 2. Pasang Lazy Loading di Tag IMG
+card.innerHTML = `
+    <div class="card-cover-wrapper" style="position:relative;">
+        ${badgeHtml}
+        <img src="${song.cover_url}" alt="${song.title}" loading="lazy"> 
+    </div>
             <div class="card-text-info">
                 <h3 class="song-title">${song.title}</h3>
                 <p class="artist-name">${song.artist}</p>
@@ -143,16 +246,7 @@ function renderPlaylist(songs) {
                     <span class="material-icons">headphones</span>
                     <span class="play-count-num">${plays}</span>
                 </div>
-                <div class="stat-group">
-                    <div class="stat-item interactive ${activeClass}" onclick="event.stopPropagation(); window.handleLike(${song.id}, event)">
-                        <span class="material-icons">${heartIcon}</span>
-                        <span class="like-count-num">${likes}</span>
-                    </div>
-                    <div class="stat-item interactive" onclick="event.stopPropagation(); window.openComments(${song.id})">
-                        <span class="material-icons">chat_bubble_outline</span>
-                        <span id="comment-count-${song.id}">${comments}</span>
-                    </div>
-                </div>
+                ${interactionHtml}
             </div>
         `;
 
@@ -210,14 +304,12 @@ window.handleLike = async function (songId, event) {
     if(songInList) { songInList.is_liked = true; songInList.like_count = currentCount; }
     await _supabase.from("likes").insert({ song_id: songId, user_id: user.id });
   }
-
-  // NGGAK ADA LAGI loadMusicLibrary() di sini! 
 };
 
 // ================= 2. PLAYER LOGIC =================
 let playTimer = null;
 
-function playSong(song) {
+async function playSong(song) {
   if (!miniPlayer || !audio) return;
 
   if (playTimer) {
@@ -227,18 +319,76 @@ function playSong(song) {
 
   miniPlayer.style.display = "flex";
 
-  audio.src = song.audio_src.startsWith("http")
-    ? song.audio_src
-    : `songs/${song.audio_src}`;
-  audio.play();
+  // 1. MATIKAN AUDIO LOKAL DULU
+  audio.pause();
 
+  // 2. UNLOCK YOUTUBE UNTUK BROWSER HP (WAJIB DI SINI)
+  // Pancing browser biar nge-izinin audio YouTube bunyi sebelum fetch API
+  if (isYTReady && ytPlayer && typeof ytPlayer.unMute === 'function') {
+    ytPlayer.unMute();
+    ytPlayer.setVolume(100);
+    ytPlayer.playVideo(); 
+  }
+
+  // 3. LOGIKA PEMILIHAN PLAYER (HYBRID YOUTUBE API)
+  if (song.source === 'api') {
+    console.log("Mencari versi FULL YouTube Resmi untuk:", song.title);
+    
+    const query = encodeURIComponent(`${song.title} ${song.artist} official audio`);
+    const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&videoCategoryId=10&key=${YOUTUBE_API_KEY}&maxResults=1`;
+
+    try {
+      const res = await fetch(apiUrl);
+      const data = await res.json();
+      
+      if (data.items && data.items.length > 0) {
+        const videoId = data.items[0].id.videoId;
+        console.log("Dapet ID YouTube:", videoId); 
+
+        if (isYTReady && ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+          // Panggil loadVideoById, dia bakal otomatis muter karena udah di-unlock di atas
+          ytPlayer.loadVideoById(videoId);
+          console.log("✅ SUKSES! Memutar FULL YouTube.");
+        } else {
+          console.warn("⚠️ Mesin YouTube belum siap! Terpaksa putar preview.");
+          throw new Error("YT Not Ready");
+        }
+      } else {
+        console.warn("⚠️ Data YouTube kosong / Limit API habis.");
+        throw new Error("Video tidak ditemukan");
+      }
+    } catch (e) {
+      audio.src = song.audio_src;
+      audio.play();
+    }
+  } 
+  else if (song.source === 'youtube') {
+    const ytId = String(song.id).replace('yt-', '');
+    if (isYTReady && ytPlayer) { 
+      ytPlayer.loadVideoById(ytId); 
+      // playVideo udah dipanggil di pancingan atas, tapi panggil lagi buat pastiin
+      ytPlayer.playVideo(); 
+    }
+  } 
+  else {
+    // LAGU LOKAL (DARI SUPABASE)
+    audio.src = song.audio_src.startsWith("http") ? song.audio_src : `songs/${song.audio_src}`;
+    audio.play();
+  }
+
+  // 4. TIMER PLAY COUNT
   playTimer = setTimeout(async () => {
-    if (!audio.paused && currentSongsList[currentSongIndex]?.id === song.id) {
-      console.log("Valid 1 menit! Menambah play count untuk:", song.title);
-      await updatePlayCount(song.id);
+    const isPlayingAudio = !audio.paused;
+    const isPlayingYT = isYTReady && ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === 1;
+    
+    if ((isPlayingAudio || isPlayingYT) && currentSongsList[currentSongIndex]?.id === song.id) {
+      if (song.source === 'local') {
+        await updatePlayCount(song.id);
+      }
     }
   }, 60000);
 
+  // 5. UPDATE UI MINI PLAYER
   if (miniCover) miniCover.src = song.cover_url;
   if (miniTitle) miniTitle.textContent = song.title;
   if (miniArtist) miniArtist.textContent = song.artist;
@@ -250,6 +400,7 @@ function playSong(song) {
   });
 }
 
+// ================= EVENT LISTENER AUDIO LOKAL =================
 if (audio) {
   audio.addEventListener("ended", () => {
     currentSongIndex++;
@@ -267,21 +418,37 @@ if (audio) {
   audio.addEventListener("pause", () => {
     if (playBtn) playBtn.textContent = "play_arrow";
   });
-
-  audio.addEventListener("timeupdate", () => {
-    if (audio.duration && progress) {
-      const percent = (audio.currentTime / audio.duration) * 100;
-      progress.style.width = `${percent}%`;
-      if (currentTimeEl) currentTimeEl.textContent = formatTime(audio.currentTime);
-      if (durationEl) durationEl.textContent = formatTime(audio.duration);
-    }
-  });
+  // (timeupdate dihapus dari sini, diganti setInterval di bawah)
 }
 
+// ================= TOMBOL PLAY/PAUSE HYBRID =================
 if (playBtn) {
-  playBtn.addEventListener("click", () =>
-    audio.paused ? audio.play() : audio.pause()
-  );
+  playBtn.addEventListener("click", () => {
+    const song = currentSongsList[currentSongIndex];
+    
+    // Jika lagu berasal dari API atau YouTube, kontrol YouTube Player
+    if (song?.source === 'api' || song?.source === 'youtube') {
+      if (isYTReady && ytPlayer && typeof ytPlayer.getPlayerState === 'function') {
+        const state = ytPlayer.getPlayerState();
+        if (state === 1) { // 1 = Playing
+          ytPlayer.pauseVideo();
+          playBtn.textContent = "play_arrow";
+        } else {
+          ytPlayer.playVideo();
+          playBtn.textContent = "pause";
+        }
+      }
+    } else {
+      // Jika lagu lokal, kontrol HTML5 Audio
+      if (audio.paused) {
+        audio.play();
+        playBtn.textContent = "pause";
+      } else {
+        audio.pause();
+        playBtn.textContent = "play_arrow";
+      }
+    }
+  });
 }
 
 function formatTime(time) {
@@ -290,10 +457,52 @@ function formatTime(time) {
   return `${min}:${sec.toString().padStart(2, "0")}`;
 }
 
+// ================= PROGRESS BAR HYBRID (JALAN OTOMATIS) =================
+setInterval(() => {
+  const song = currentSongsList[currentSongIndex];
+  if (!song || !progress) return;
+
+  let currentTime = 0;
+  let duration = 0;
+
+  // Cek apakah yang lagi muter YouTube atau Lokal
+  if ((song.source === 'api' || song.source === 'youtube') && isYTReady && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+    currentTime = ytPlayer.getCurrentTime() || 0;
+    duration = ytPlayer.getDuration() || 0;
+  } else {
+    currentTime = audio.currentTime || 0;
+    duration = audio.duration || 0;
+  }
+
+  // Update garis UI-nya
+  if (duration > 0) {
+    const percent = (currentTime / duration) * 100;
+    progress.style.width = `${percent}%`;
+    
+    if (typeof currentTimeEl !== 'undefined' && currentTimeEl) currentTimeEl.textContent = formatTime(currentTime);
+    if (typeof durationEl !== 'undefined' && durationEl) durationEl.textContent = formatTime(duration);
+  }
+}, 500); // Cek dan geser garis setiap setengah detik
+
+// ================= KLIK PROGRESS BAR BUAT CEPETIN/MUNDURIN =================
 if (progressContainer) {
   progressContainer.addEventListener("click", (e) => {
-    audio.currentTime =
-      (e.offsetX / progressContainer.clientWidth) * audio.duration;
+    const song = currentSongsList[currentSongIndex];
+    if (!song) return;
+    
+    // Hitung posisi klik lu di layar (dalam persen)
+    const percent = e.offsetX / progressContainer.clientWidth;
+
+    if (song.source === 'api' || song.source === 'youtube') {
+      if (isYTReady && ytPlayer && typeof ytPlayer.getDuration === 'function') {
+        const newTime = percent * ytPlayer.getDuration();
+        ytPlayer.seekTo(newTime, true); // Suruh YouTube loncat ke detik itu
+      }
+    } else {
+      if (audio.duration) {
+        audio.currentTime = percent * audio.duration; // Suruh Audio lokal loncat
+      }
+    }
   });
 }
 
@@ -328,7 +537,6 @@ async function updatePlayCount(songId) {
     }
 
     console.log("Play count updated! +1");
-    // NGGAK ADA LAGI loadMusicLibrary() di sini!
   } catch (err) {
     console.error("Gagal update play count:", err.message);
   }
@@ -729,3 +937,4 @@ async function initApp() {
 }
 
 initApp();
+

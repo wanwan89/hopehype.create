@@ -1053,11 +1053,13 @@ function closeNotif() {
   if (overlay) overlay.style.opacity = "0";
   setTimeout(() => { if (notifList) notifList.style.display = "none"; if (overlay) overlay.remove(); }, 300);
 }
+
 // ==========================================
-// PUSH NOTIFICATION SYSTEM (JALUR PAKSA)
+// PUSH NOTIFICATION SYSTEM (HOPECREATE FULL)
 // ==========================================
 
 async function aktifkanNotifikasi(userId) {
+  // 1. Tunggu sampai SDK Firebase terload
   if (typeof firebase === 'undefined') {
     setTimeout(() => aktifkanNotifikasi(userId), 1000);
     return;
@@ -1073,6 +1075,7 @@ async function aktifkanNotifikasi(userId) {
   };
 
   try {
+    // 2. Inisialisasi Firebase
     if (firebase.apps.length === 0) {
       firebase.initializeApp(firebaseConfig);
       console.log("Firebase HopeCreate Siap! 🚀");
@@ -1080,33 +1083,59 @@ async function aktifkanNotifikasi(userId) {
 
     const messaging = firebase.messaging();
     
-    // 1. Minta izin
+    // 3. DAFTARKAN SERVICE WORKER SECARA MANUAL (SOLUSI STUCK)
+    console.log("Mendaftarkan Satpam (SW)...");
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    
+    // Tunggu sampai SW benar-benar aktif
+    await navigator.serviceWorker.ready;
+    console.log("Satpam Aktif & Siap Jaga! ✅");
+
+    // 4. Minta Izin Notifikasi
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
         console.log("Izin ditolak. Klik ikon gembok di browser lalu 'Reset Permission'!");
         return;
     }
 
-    // 2. Ambil Token
+    // 5. Ambil Token (Gunakan registration agar tidak 'No Active SW')
     console.log("Sedang mengambil token...");
     const token = await messaging.getToken({ 
-  vapidKey: 'BJ-fSO8MZxyXnvFL6AGRf4dsl-9lWXAONrtSaI6T-4SGM0UxojM5vVfpu9YIE_kiIbBBxl4RWUkYykx-8n3etYo' 
-});
+      serviceWorkerRegistration: registration,
+      vapidKey: 'BJ-fSO8MZxyXnvFL6AGRf4dsl-9lWXAONrtSaI6T-4SGM0UxojM5vVfpu9YIE_kiIbBBxl4RWUkYykx-8n3etYo' 
+    });
 
     if (token) {
-      // 3. Simpan ke Supabase
+      // 6. Simpan ke Supabase
       const { error } = await db.from('user_push_tokens').upsert({ 
         user_id: userId, 
         token: token 
-      });
+      }, { onConflict: 'user_id' }); // Update jika user_id sudah ada
 
       if (error) {
         console.error("Gagal simpan ke Supabase:", error.message);
       } else {
-        console.log("Notifikasi HopeHype Aktif! ✅ Token sudah di database.");
+        console.log("Notifikasi HopeHype Aktif! ✅ Token aman di database.");
       }
     }
   } catch (err) {
     console.error("DEBUG ERROR NOTIF:", err.message);
+    
+    // Jika error karena 'Permission Denied' atau 403, sarankan hapus DB
+    if (err.message.includes('403') || err.message.includes('permission')) {
+        console.log("Saran: Jalankan perintah 'indexedDB.deleteDatabase' di console.");
+    }
   }
 }
+
+// ==========================================
+// PEMICU OTOMATIS (TARUH DI PALING BAWAH)
+// ==========================================
+db.auth.getUser().then(({ data: { user } }) => {
+  if (user) {
+    console.log("User terdeteksi, menjalankan sistem notif...");
+    aktifkanNotifikasi(user.id);
+  } else {
+    console.log("User belum login, skip notifikasi.");
+  }
+});

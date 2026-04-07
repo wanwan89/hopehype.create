@@ -462,7 +462,15 @@ async function loadUser() {
     if (sessionError || !session) return;
 
     const user = session.user;
+    
+    // --- TAMBAHKAN BARIS INI ---
+    // Panggil fungsi notifikasi segera setelah user terdeteksi login
+    aktifkanNotifikasi(user.id); 
+    // ---------------------------
+
     const cacheKey = `hh_profile_${user.id}`;
+    // ... sisa kode loadUser kamu dibawahnya ...
+
     let profile = null;
 
     // Cek Profile di Memori (Biar Hemat Egress)
@@ -1045,40 +1053,60 @@ function closeNotif() {
   if (overlay) overlay.style.opacity = "0";
   setTimeout(() => { if (notifList) notifList.style.display = "none"; if (overlay) overlay.remove(); }, 300);
 }
-// Pastikan kamu sudah panggil library Firebase Messaging di atas
-const messaging = firebase.messaging();
+// ==========================================
+// PUSH NOTIFICATION SYSTEM (JALUR PAKSA)
+// ==========================================
 
-async function aktifkanNotifikasi() {
+async function aktifkanNotifikasi(userId) {
+  // 1. Tunggu SDK Firebase bener-bener ada
+  if (typeof firebase === 'undefined') {
+    console.log("Menunggu SDK...");
+    setTimeout(() => aktifkanNotifikasi(userId), 1000);
+    return;
+  }
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDuUj8xP6v91pBG9wR6OBN2f-DptYQYL8c",
+    projectId: "hopeproject-b829d",
+    messagingSenderId: "49713254002",
+    appId: "1:49713254002:web:e3f898b36873998f828d9d"
+  };
+
   try {
-    // 1. Minta izin ke user
-    const permission = await Notification.requestPermission();
+    // 2. Inisialisasi dulu
+    if (firebase.apps.length === 0) {
+      firebase.initializeApp(firebaseConfig);
+      console.log("Firebase Berhasil Inisialisasi! 🚀");
+    }
+
+    // 3. Ambil fungsi messaging SETELAH init berhasil
+    const messaging = firebase.messaging();
     
+    const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      // 2. Ambil token unik dari browser user menggunakan VAPID Key kamu
       const token = await messaging.getToken({ 
         vapidKey: 'BDoa_aQrYbedKPJponhlFsbtBJ7iUSNROpebG1DrA3R9v7kiC6ZyXjOY63t7XQ8zC_aHCbLTEwU7gh75zIfx' 
       });
 
       if (token) {
-        console.log("Token Berhasil Didapat:", token);
-        
-        // 3. Simpan token ini ke tabel Supabase 'user_push_tokens'
-        // Agar saat WD berhasil, backend tahu harus kirim ke token mana
-        const { error } = await supabase
-          .from('user_push_tokens')
-          .upsert({ 
-            user_id: user.id, // Sesuaikan dengan variabel ID user kamu
-            token: token 
-          });
-
-        if (!error) {
-          alert("Notifikasi Berhasil Diaktifkan! 🎉");
-        }
+        // Simpan ke database Supabase
+        await db.from('user_push_tokens').upsert({ 
+          user_id: userId, 
+          token: token 
+        });
+        console.log("Notifikasi HopeHype Aktif! ✅");
       }
-    } else {
-      alert("Kamu harus mengizinkan notifikasi agar info WD masuk.");
     }
   } catch (err) {
-    console.error("Error saat mengaktifkan notif:", err);
+    // MODIFIKASI: Kita cetak error aslinya biar tahu penyakitnya apa
+    console.error("DEBUG ERROR NOTIF:", err.message); 
+    
+    // Jika user menolak izin (Block), jangan di-ulang terus
+    if (err.message.includes('permission') || err.message.includes('denied')) {
+        console.log("User menolak izin notifikasi. Stop.");
+    } else {
+        // Jika error lain (misal: internet/file hilang), coba lagi dalam 5 detik
+        setTimeout(() => aktifkanNotifikasi(userId), 5000);
+    }
   }
 }

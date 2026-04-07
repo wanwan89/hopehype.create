@@ -1066,7 +1066,7 @@ async function aktifkanNotifikasi(userId) {
   }
 
   const firebaseConfig = {
-    apiKey: "AIzaSyDuUj8xP6v91pBG9wR6OBN2f-DptYQYL8c",
+    apiKey: "AIzaSyCRnwkcydQK2LkdQj7H3WmIKdEyZ9giD9I",
     projectId: "hopeproject-b829d",
     messagingSenderId: "49713254002",
     appId: "1:49713254002:web:e3f898b36873998f828d9d"

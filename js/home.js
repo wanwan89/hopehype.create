@@ -1058,63 +1058,50 @@ function closeNotif() {
 // ==========================================
 
 async function aktifkanNotifikasi(userId) {
-  // 1. Tunggu SDK Firebase bener-bener ada
   if (typeof firebase === 'undefined') {
-    console.log("Menunggu SDK...");
     setTimeout(() => aktifkanNotifikasi(userId), 1000);
     return;
   }
 
+  // PAKAI CONFIG PROJECT 'HOPECREATE' (JANGAN DICAMPUR!)
   const firebaseConfig = {
     apiKey: "AIzaSyCRnwkcydQK2LkdQj7H3WmIKdEyZ9giD9I",
-    projectId: "hopeproject-b829d",
-    messagingSenderId: "49713254002",
-    appId: "1:49713254002:web:e3f898b36873998f828d9d"
+    authDomain: "hopecreate-b21d8.firebaseapp.com",
+    projectId: "hopecreate-b21d8", // <--- Pastikan ini hopecreate
+    storageBucket: "hopecreate-b21d8.firebasestorage.app",
+    messagingSenderId: "313569930727", // <--- Pastikan ini angka 3135...
+    appId: "1:313569930727:web:afd1e2757cd0fe0867a142"
   };
 
   try {
-    // 2. Inisialisasi dulu
     if (firebase.apps.length === 0) {
       firebase.initializeApp(firebaseConfig);
-      console.log("Firebase Berhasil Inisialisasi! 🚀");
+      console.log("Firebase HopeCreate Siap! 🚀");
     }
 
-    // 3. Ambil fungsi messaging SETELAH init berhasil
     const messaging = firebase.messaging();
     
+    // Minta izin
     const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      const token = await messaging.getToken({ 
-  vapidKey: 'BJ-fSO8MZxyXnvFL6AGRf4dsl-9lWXAONrtSaI6T-4SG M0UxojM5vVfpu9YIE_kiIbBBxl4RWUkYykx-8n3etYo' 
-});
-      if (token) {
-        // Simpan ke database Supabase
-        await db.from('user_push_tokens').upsert({ 
-          user_id: userId, 
-          token: token 
-        });
-        console.log("Notifikasi HopeHype Aktif! ✅");
-      }
+    if (permission !== 'granted') {
+        console.log("Izin ditolak. Klik ikon gembok di browser lalu 'Reset Permission'!");
+        return;
+    }
+
+    // Ambil Token
+    const token = await messaging.getToken({ 
+      vapidKey: 'BJ-fSO8MZxyXnvFL6AGRf4dsl-9lWXAONrtSaI6T-4SGM0UxojM5vVfpu9YIE_kiIbBBxl4RWUkYykx-8n3etYo' 
+    });
+
+    if (token) {
+      await db.from('user_push_tokens').upsert({ 
+        user_id: userId, 
+        token: token 
+      });
+      console.log("Notifikasi HopeHype Aktif! ✅");
     }
   } catch (err) {
-    // MODIFIKASI: Kita cetak error aslinya biar tahu penyakitnya apa
-    console.error("DEBUG ERROR NOTIF:", err.message); 
-    
-    // Jika user menolak izin (Block), jangan di-ulang terus
-    if (err.message.includes('permission') || err.message.includes('denied')) {
-        console.log("User menolak izin notifikasi. Stop.");
-    } else {
-        // Jika error lain (misal: internet/file hilang), coba lagi dalam 5 detik
-        setTimeout(() => aktifkanNotifikasi(userId), 5000);
-    }
+    console.error("DEBUG ERROR NOTIF:", err.message);
+    // Jika masih 403, jalankan 'Ritual Hapus Database' di console eruda
   }
 }
-// TES PAKSA: Panggil fungsi begitu halaman terbuka
-db.auth.getUser().then(({ data: { user } }) => {
-  if (user) {
-    console.log("User terdeteksi, menjalankan sistem notif...");
-    aktifkanNotifikasi(user.id);
-  } else {
-    console.log("User belum login, notif tidak diaktifkan.");
-  }
-});

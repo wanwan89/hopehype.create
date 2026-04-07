@@ -1045,3 +1045,40 @@ function closeNotif() {
   if (overlay) overlay.style.opacity = "0";
   setTimeout(() => { if (notifList) notifList.style.display = "none"; if (overlay) overlay.remove(); }, 300);
 }
+// Pastikan kamu sudah panggil library Firebase Messaging di atas
+const messaging = firebase.messaging();
+
+async function aktifkanNotifikasi() {
+  try {
+    // 1. Minta izin ke user
+    const permission = await Notification.requestPermission();
+    
+    if (permission === 'granted') {
+      // 2. Ambil token unik dari browser user menggunakan VAPID Key kamu
+      const token = await messaging.getToken({ 
+        vapidKey: 'BDoa_aQrYbedKPJponhlFsbtBJ7iUSNROpebG1DrA3R9v7kiC6ZyXjOY63t7XQ8zC_aHCbLTEwU7gh75zIfx' 
+      });
+
+      if (token) {
+        console.log("Token Berhasil Didapat:", token);
+        
+        // 3. Simpan token ini ke tabel Supabase 'user_push_tokens'
+        // Agar saat WD berhasil, backend tahu harus kirim ke token mana
+        const { error } = await supabase
+          .from('user_push_tokens')
+          .upsert({ 
+            user_id: user.id, // Sesuaikan dengan variabel ID user kamu
+            token: token 
+          });
+
+        if (!error) {
+          alert("Notifikasi Berhasil Diaktifkan! 🎉");
+        }
+      }
+    } else {
+      alert("Kamu harus mengizinkan notifikasi agar info WD masuk.");
+    }
+  } catch (err) {
+    console.error("Error saat mengaktifkan notif:", err);
+  }
+}

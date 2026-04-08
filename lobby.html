@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>HypeVoice</title>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>eruda.init();</script>
     <link rel="stylesheet" href="css/lobby.css">
   <link rel="stylesheet" href="css/toast.css">
   <script src="js/toast.js"></script>
@@ -52,9 +54,36 @@
         </div>
 
 
-        <div id="room-list" class="room-list-container">
-            <div class="loader">Memanggil Panggung...</div>
+<div id="room-list" class="room-list-container">
+    <div class="skeleton-card">
+        <div class="skeleton skeleton-thumb"></div>
+        <div class="skeleton-info">
+            <div class="skeleton skeleton-text skeleton-title"></div>
+            <div class="skeleton skeleton-text skeleton-desc"></div>
         </div>
+        <div class="skeleton skeleton-pill"></div>
+    </div>
+    
+    <div class="skeleton-card">
+        <div class="skeleton skeleton-thumb"></div>
+        <div class="skeleton-info">
+            <div class="skeleton skeleton-text skeleton-title"></div>
+            <div class="skeleton skeleton-text skeleton-desc" style="width: 50%;"></div>
+        </div>
+        <div class="skeleton skeleton-pill"></div>
+    </div>
+
+    <div class="skeleton-card">
+        <div class="skeleton skeleton-thumb"></div>
+        <div class="skeleton-info">
+            <div class="skeleton skeleton-text skeleton-title" style="width: 80%;"></div>
+            <div class="skeleton skeleton-text skeleton-desc"></div>
+        </div>
+        <div class="skeleton skeleton-pill"></div>
+    </div>
+</div>
+
+
     </main>
 </div>
 
@@ -90,7 +119,7 @@
         </div>
     </div>
 </div>
-
+ 
 
 <script src="js/lobby.js"></script>
 </body>

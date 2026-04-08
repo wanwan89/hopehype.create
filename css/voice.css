@@ -1,167 +1,182 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* ==========================================================================
+   HYPEVOICE - NATIVE APP EDITION (FULL FIX & PERFECTED)
+   Anti-Kepotong, Efek Sonar, Chat Lega, Badge Normal 1 Baris
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-    --primary: #0084ff;
-    --bg-dark: #121212;
-    --card-bg: #1e1e1e;
-    --accent: #f1c40f;
-    --text-main: #ffffff;
-    --text-muted: #a0a0a0;
-    --danger: #ff4d4d;
+    --primary: #3b82f6;         
+    --bg-base: #121822;         
+    --panel-bg: rgba(30, 40, 54, 0.95); 
+    --empty-slot: #222d3d;      
+    --accent: #f59e0b;          
+    --success: #00ff88;         /* Hijau terang untuk efek sonar */
+    --text-main: #f8fafc;       
+    --text-muted: #94a3b8;      
+    --danger: #ef4444;
 }
 
 * {
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
     outline: none;
+    margin: 0;
+    padding: 0;
 }
 
 body, html {
-    margin: 0;
-    padding: 0;
     width: 100%;
     height: 100%;
-    
-    background-color: var(--bg-dark); 
+    background-color: var(--bg-base); 
     background-image: url('../asets/png/voice.png'); 
     background-size: cover; 
     background-position: center; 
     background-repeat: no-repeat; 
-
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter', -apple-system, sans-serif;
     color: var(--text-main);
     overflow: hidden; 
 }
 
-/* CONTAINER UTAMA */
+/* ==================================================
+   1. MAIN LAYOUT & HEADER
+================================================== */
 .app-container {
     display: flex;
     flex-direction: column;
     height: 100vh;
     width: 100%;
     position: relative;
+    background: rgba(18, 24, 34, 0.85); 
 }
 
-/* HEADER */
 .main-header {
-    padding: 15px 20px;
+    padding: 16px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(24, 24, 24, 0.6); 
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--panel-bg); 
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    z-index: 100;
 }
 
-.room-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--primary);
-    margin: 0;
-}
+.header-left { display: flex; flex-direction: column; }
+.room-title { font-size: 17px; font-weight: 700; color: var(--text-main); }
+.menu-btn { background: transparent; border: none; cursor: pointer; color: var(--text-main); }
+.menu-btn .material-icons { color: var(--text-main) !important; }
 
-.btn-exit {
-    background: rgba(255, 77, 77, 0.1);
-    color: var(--danger);
-    border: none;
-    padding: 8px 15px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-/* STAGE / PANGGUNG */
+/* ==================================================
+   2. STAGE / PANGGUNG
+================================================== */
 .stage-container {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    padding: 20px;
-    background: rgba(24, 24, 24, 0.6);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 0 0 25px 25px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    gap: 20px 10px; 
+    padding: 24px 15px;
+    background: var(--panel-bg);
+    border-radius: 0 0 32px 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2); 
+    z-index: 90;
 }
 
 .speaker-item {
     display: flex;
     flex-direction: column;
     align-items: center;
+    width: 100%; 
+    min-width: 0; /* Penting agar grid tidak jebol kesamping */
 }
 
-/* Update Avatar dasar */
+.speaker-item.empty .avatar { background: var(--empty-slot); border: none; box-shadow: none; }
+.speaker-item.empty .avatar .material-icons { color: #475569; font-size: 28px; }
+
 .avatar {
-    width: 75px;
-    height: 75px;
-    border-radius: 28px; 
-    background: #252525;
+    width: 64px; 
+    height: 64px;
+    border-radius: 50%; 
+    background: var(--empty-slot);
     position: relative;
-    border: 3px solid transparent; 
-    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: visible; 
+    border: 2px solid transparent; 
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
 }
 
-/* FIX EFEK NGOMONG (GLOW) */
+.avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+
+/* 🔥 EFEK SONAR SAAT NGOMONG 🔥 */
 .avatar.speaking {
-    border-color: #00ff88 !important; 
-    box-shadow: 0 0 15px rgba(0, 255, 136, 0.8), 
-                0 0 30px rgba(0, 255, 136, 0.5); 
-    transform: scale(1.08); 
-    z-index: 5;
-    animation: glow-pulse 1.5s infinite; 
+    border-color: var(--success) !important; 
+    /* Animasi gelombang suara memancar */
+    animation: sonar-wave 1.5s infinite ease-out;
 }
 
-@keyframes glow-pulse {
-    0% { box-shadow: 0 0 10px rgba(0, 255, 136, 0.6); }
-    50% { box-shadow: 0 0 25px rgba(0, 255, 136, 0.9); }
-    100% { box-shadow: 0 0 10px rgba(0, 255, 136, 0.6); }
-}
-
-.avatar.speaking img {
-    filter: brightness(1.2);
-}
-
-.avatar img {
-    width: calc(100% - 2px);
-    height: calc(100% - 2px);
-    border-radius: 25px;
-    object-fit: cover;
-    pointer-events: none;
+@keyframes sonar-wave {
+    0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.6), 0 0 0 0 rgba(0, 255, 136, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(0, 255, 136, 0.2), 0 0 0 16px rgba(0, 255, 136, 0.1); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0), 0 0 0 0 rgba(0, 255, 136, 0); }
 }
 
 .gift-trigger {
-    position: absolute;
-    bottom: -5px;
-    right: -5px;
-    background: var(--accent);
-    border: none;
-    border-radius: 50%;
-    width: 26px;
-    height: 26px;
-    font-size: 12px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+    position: absolute; bottom: -4px; right: -4px;
+    background: var(--empty-slot); color: var(--accent);
+    border: 2px solid var(--panel-bg); border-radius: 50%;
+    width: 26px; height: 26px; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; z-index: 10;
 }
 
+/* 🔥 PERBAIKAN 1 & 2: NAMA DAN BADGE SATU BARIS RAPI 🔥 */
 .name-label {
-    margin-top: 8px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-align: center;
+    margin-top: 10px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px; /* Jarak antar elemen */
+    font-size: 13px; /* Ukuran font normal */
+    font-weight: 700;
+    color: var(--text-main);
+    
+    /* Paksa 1 baris */
+    flex-wrap: nowrap; 
+    overflow: hidden; 
 }
 
-.name-label b {
-    color: var(--primary);
-    background: rgba(0, 132, 255, 0.15);
-    padding: 1px 4px;
+/* Teks nama dipotong (ellipsis) jika kepanjangan */
+.name-label span, 
+.name-label .user-name-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    /* Jangan biarkan nama memakan semua ruang, beri sisa untuk badge */
+    flex-shrink: 1; 
+}
+
+/* Styling Badge Normal */
+.name-label b, 
+.badge {
+    font-size: 10px !important; 
+    padding: 2px 5px !important;
     border-radius: 4px;
+    height: auto;
+    
+    /* Mencegah badge terpotong; ia akan tetap utuh meski nama memendek */
+    flex-shrink: 0; 
+    white-space: nowrap;
 }
 
+/* Styling icon (seperti mahkota) di dalam label */
+.name-label img {
+    height: 14px !important; 
+    width: auto;
+    flex-shrink: 0;
+}
+
+.speaker-item.empty .name-label { color: var(--text-muted); font-size: 12px; }
+
+/* ==================================================
+   3. CHAT DISPLAY
+================================================== */
 .chat-display {
     flex: 1;
     overflow-y: auto;
@@ -169,593 +184,154 @@ body, html {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding-bottom: 90px; 
+    /* 🔥 PADDING BAWAH LEGA AGAR TIDAK TERTUTUP INPUT 🔥 */
+    padding-bottom: 140px; 
+    scrollbar-width: none; 
 }
+.chat-display::-webkit-scrollbar { display: none; }
 
 .msg {
-    background: #222;
-    padding: 10px 14px;
-    border-radius: 15px;
-    max-width: 85%;
-    font-size: 13px;
-    align-self: flex-start;
+    background: rgba(30, 40, 54, 0.9);
+    border-radius: 16px; border-top-left-radius: 4px; 
+    padding: 10px 14px; max-width: 85%;
+    font-size: 13px; line-height: 1.4; color: var(--text-main); align-self: flex-start;
 }
 
-.msg .user {
-    font-weight: 700;
-    color: var(--primary);
-    margin-right: 5px;
-}
+.msg .user { font-weight: 700; color: var(--primary); margin-right: 6px; }
+.msg.system { background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--accent); }
+.msg.system .user { color: var(--accent); }
 
 /* ==================================================
-   🔥 FOOTER & CHAT INPUT (DESAIN MODERN KAPSUL) 🔥
+   4. FOOTER INPUT PANEL
 ================================================== */
 .footer-controls {
     position: fixed; 
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 12px 15px;
-    background: rgba(24, 24, 24, 0.7); 
-    backdrop-filter: blur(15px); 
-    -webkit-backdrop-filter: blur(15px);
-    border-top: 1px solid rgba(255, 255, 255, 0.05); 
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    z-index: 900; 
-    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    bottom: 0; left: 0; right: 0;
+    padding: 10px 15px;
+    background: var(--panel-bg); 
+    border-top: 1px solid rgba(255,255,255,0.05); 
+    display: flex; gap: 10px; align-items: center; z-index: 900; 
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
 }
 
-/* Warna Tombol Gift Diubah Jadi Biru */
 .btn-gift-main {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%; 
-    background: linear-gradient(135deg, #0084ff, #00c6ff); /* Gradasi Biru Premium */
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffffff; /* Ikon warna putih biar kontras dengan Biru */
-    box-shadow: 0 4px 15px rgba(0, 132, 255, 0.4); /* Bayangan biru */
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    flex-shrink: 0; 
-}
-
-.btn-gift-main:active {
-    transform: scale(0.9);
-    box-shadow: 0 2px 5px rgba(0, 132, 255, 0.4);
-}
-
-.btn-gift-main .material-icons {
-    font-size: 22px;
+    width: 44px; height: 44px; border-radius: 50%; background: var(--accent); 
+    border: none; display: flex; align-items: center; justify-content: center;
+    color: #ffffff; cursor: pointer; flex-shrink: 0; 
 }
 
 .input-wrapper {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.08); 
-    border-radius: 30px; 
-    padding: 4px 5px 4px 18px; 
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    height: 46px; 
+    flex: 1; display: flex; align-items: center;
+    background: rgba(0,0,0,0.3); border-radius: 24px; padding: 4px 6px 4px 16px; height: 44px; 
 }
 
-#chat-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    color: white;
-    font-size: 14px;
-    outline: none;
-    padding: 0;
-    margin-right: 10px;
-}
-
-#chat-input::placeholder {
-    color: rgba(255, 255, 255, 0.4);
-}
+#chat-input { flex: 1; background: transparent; border: none; color: var(--text-main); font-size: 13px; }
+#chat-input::placeholder { color: var(--text-muted); }
 
 .btn-send {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--primary); 
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 3px 8px rgba(0, 132, 255, 0.3);
+    width: 34px; height: 34px; border-radius: 50%; background: var(--primary); 
+    border: none; display: flex; align-items: center; justify-content: center;
+    color: white; cursor: pointer;
 }
 
-.btn-send:active {
-    transform: scale(0.85);
-    background: #0066cc;
-}
-
-/* ================================================== */
-
-/* Tombol Mic */
-.btn-mic {
-    background: #333;
-    color: white;
-    border: none;
-    padding: 12px 15px;
-    border-radius: 15px;
-    font-weight: 700;
-    font-size: 12px;
-    white-space: nowrap;
-}
-
-.btn-mic-header {
-    background: var(--primary);
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-weight: 700;
-    font-size: 11px;
-    margin-right: 8px;
-}
-
-/* --- SLIDE UP DRAWER GIFT --- */
+/* ==================================================
+   5. DRAWER GIFT (SLIDE UP)
+================================================== */
 .gift-drawer {
-    position: fixed;
-    bottom: -100%; 
-    left: 0;
-    right: 0;
-    background: #1e1e1e;
-    border-top-left-radius: 30px; 
-    border-top-right-radius: 30px;
-    z-index: 5001; 
-    padding: 20px;
-    padding-top: 30px; 
+    position: fixed; bottom: -100%; left: 0; right: 0;
+    background: var(--bg-base);
+    border-top-left-radius: 24px; border-top-right-radius: 24px;
+    z-index: 5001; padding: 20px; padding-top: 30px; 
     padding-bottom: calc(30px + env(safe-area-inset-bottom)); 
-    transition: bottom 0.4s cubic-bezier(0.36, 1.1, 0.2, 1);
-    box-shadow: 0 -15px 50px rgba(0,0,0,0.6);
-    max-height: 70vh; 
-    overflow-y: auto;
+    transition: bottom 0.3s ease; box-shadow: 0 -5px 25px rgba(0,0,0,0.5);
 }
+.gift-drawer.open { bottom: 0 !important; }
 
-.gift-drawer.open {
-    bottom: 0 !important; 
-}
+.drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.drawer-title { font-weight: 700; font-size: 15px; }
 
-.drawer-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    margin-bottom: 20px;
-    padding-top: 5px;
-}
+.handle { width: 40px; height: 4px; background: #334155; border-radius: 10px; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); }
 
-.drawer-header span {
-    color: var(--text-main);
-    font-weight: 700;
-    font-size: 15px;
-}
+.coin-panel { background: rgba(245, 158, 11, 0.1); padding: 4px 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px; }
+#user-coins { color: var(--accent); font-weight: 700; font-size: 13px; }
 
-.handle {
-    width: 50px;
-    height: 5px;
-    background: #333;
-    border-radius: 10px;
-    position: absolute;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-}
+.target-selection-container { margin-bottom: 20px; }
+.target-label { font-size: 11px; color: var(--text-muted); font-weight: 700; margin-bottom: 10px; display: block; }
+.target-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+.target-user { display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: 0.5; }
+.target-user.selected { opacity: 1; }
+.target-avatar { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 2px solid transparent;}
+.target-user.selected .target-avatar { border-color: var(--primary); }
+.target-name { font-size: 10px; font-weight: 600; }
 
-.gift-list {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); 
-    gap: 12px;
-}
+.gift-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.gift-item { background: var(--panel-bg); padding: 12px 6px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; }
+.gift-img { width: 45px; height: 45px; object-fit: contain; margin-bottom: 8px; }
+.gift-label { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+.gift-price { font-size: 11px; color: var(--accent); font-weight: 700; margin-top: 4px; }
 
-/* Item Gift Dibuat Lebih Elegan (Transparan & Outline) */
-.gift-item {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 15px 5px;
-    border-radius: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    transition: all 0.2s;
-}
-
-.gift-item:active {
-    transform: scale(0.9);
-    background: rgba(241, 196, 15, 0.1);
-    border-color: #f1c40f;
-    box-shadow: 0 0 15px rgba(241, 196, 15, 0.2);
-}
-
-.gift-img {
-    font-size: 32px; 
-    width: 50px;     
-    height: 50px;
-    object-fit: contain;
-    margin-bottom: 8px;
-}
-
-.gift-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-align: center;
-}
-
-/* OVERLAY GELAP */
-.drawer-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 5000; 
-    display: none;
-    backdrop-filter: blur(4px); 
-}
-
+.drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 5000; display: none; }
 .drawer-overlay.show { display: block; }
 
-.menu-btn {
-    background: none;
-    border: none;
-    color: var(--text-main);
-    cursor: pointer;
-    margin-right: 15px;
-    display: flex;
-    align-items: center;
-}
-
-/* SIDEBAR & OVERLAY */
-.sidebar-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 1999; 
-    display: none; 
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.sidebar-overlay.active { display: block; opacity: 1; }
+/* ==================================================
+   6. SIDEBAR MENU
+================================================== */
+.sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1999; display: none; }
+.sidebar-overlay.active { display: block; }
 
 .sidebar {
-    position: fixed;
-    top: 0; right: -280px; 
-    width: 280px; height: 100%;
-    background: #181818;
-    z-index: 2000;
-    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    padding: 25px 20px;
-    box-shadow: -10px 0 30px rgba(0,0,0,0.5);
-    display: flex;
-    flex-direction: column; 
+    position: fixed; top: 0; right: -280px; width: 280px; height: 100%;
+    background: var(--bg-base); z-index: 2000;
+    transition: right 0.3s ease; padding: 24px 20px;
+    display: flex; flex-direction: column; 
 }
-
 .sidebar.active { right: 0; }
 
-.sidebar-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    padding-bottom: 20px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
+.sidebar-header { display: flex; flex-direction: column; align-items: center; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); position: relative; }
+.close-sidebar-btn { position: absolute; left: 0; top: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 24px; }
+.sidebar-profile-img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; }
+#sidebar-username { font-weight: 700; font-size: 15px; }
 
-.sidebar-profile-img {
-    width: 70px; 
-    height: 70px;
-    border-radius: 50%;
-    border: 2px solid var(--primary);
-    object-fit: cover;
-    margin-bottom: 12px;
-}
+.sidebar-menu { margin-top: 20px; }
+.sidebar-menu a { display: flex; align-items: center; gap: 12px; color: var(--text-main); text-decoration: none; padding: 12px 14px; border-radius: 12px; margin-bottom: 5px; font-size: 13px; font-weight: 600; }
+.sidebar-menu a.logout-item { color: var(--danger); margin-top: 20px; }
 
-#sidebar-username {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text-main);
-    letter-spacing: 0.5px;
-}
-
-.close-sidebar-btn {
-    position: absolute;
-    left: 0; top: 0;
-    background: none;
-    border: none;
-    color: #555;
-    cursor: pointer;
-}
-
-.sidebar-menu {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1; 
-}
-
-.sidebar-menu a {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    color: #fff;
-    text-decoration: none;
-    padding: 12px 15px;
-    border-radius: 12px;
-    margin-bottom: 5px;
-    font-size: 14px;
-    transition: background 0.2s;
-}
-
-.sidebar-menu a:hover {
-    background: rgba(0, 132, 255, 0.1);
-    color: var(--primary);
-}
-
-.sidebar-menu a .material-icons { font-size: 20px; }
-
-.logout-item {
-    color: #ff4d4d !important;
-    margin-top: auto; 
-    margin-bottom: 10px;
-    background: rgba(255, 77, 77, 0.08) !important;
-    font-weight: 700;
-}
-
-/* Panel Saldo Koin */
-.coin-panel {
-    background: rgba(241, 196, 15, 0.15);
-    padding: 4px 12px;
-    border-radius: 20px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    border: 1px solid rgba(241, 196, 15, 0.3);
-}
-
-#user-coins {
-    color: #f1c40f;
-    font-weight: 800;
-    font-size: 14px;
-}
-
-/* --- HARGA KOIN MENGGUNAKAN SVG --- */
-.gift-price {
-    font-size: 11px;
-    color: #f1c40f;
-    font-weight: 800;
-    margin-top: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-}
-
-/* Hapus "🪙" dan ganti dengan background image SVG */
-.gift-price::before { 
-    content: "";
-    display: block;
-    width: 13px;
-    height: 13px;
-    background-image: url('../asets/svg/koin.svg'); /* Pastikan path ini benar! */
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-}
-
-/* TARGET SELECTION */
-.target-selection-container { margin-bottom: 20px; padding: 0 5px; }
-.target-label {
-    font-size: 10px;
-    color: #888;
-    font-weight: 800;
-    margin-bottom: 10px;
-    display: block;
-    letter-spacing: 1px;
-}
-
-.target-list {
-    display: flex;
-    gap: 15px;
-    overflow-x: auto;
-    padding: 5px 5px 10px 5px;
-    scrollbar-width: none;
-}
-.target-list::-webkit-scrollbar { display: none; }
-
-.target-user {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    min-width: 65px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    filter: grayscale(100%) opacity(0.5); 
-}
-
-.target-user.selected {
-    filter: grayscale(0%) opacity(1);
-    transform: scale(1.1);
-}
-
-.target-avatar {
-    width: 50px; height: 50px;
-    border-radius: 18px;
-    border: 2px solid transparent;
-    object-fit: cover;
-}
-
-.target-user.selected .target-avatar {
-    border-color: var(--primary);
-    box-shadow: 0 0 12px rgba(0, 132, 255, 0.6);
-}
-
-.target-name {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-muted);
-    max-width: 65px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.target-user.selected .target-name { color: var(--primary); }
-
-/* TOMBOL TUTUP DRAWER */
-.close-drawer-btn {
-    background: rgba(255, 255, 255, 0.08); 
-    border: none;
-    color: #a0a0a0; 
-    width: 35px; height: 35px;
-    border-radius: 50%; 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 18px;
-    font-weight: bold;
-    transition: all 0.2s ease;
-}
-
-.close-drawer-btn:active {
-    background: rgba(255, 255, 255, 0.2);
-    transform: scale(0.9); 
-    color: #ffffff;
-}
-
-/* TOMBOL KICK */
-.kick-btn {
-    position: absolute;
-    top: -2px; right: -2px;
-    background: #ff4757;
-    color: white;
-    width: 20px; height: 20px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    cursor: pointer;
-    border: 2px solid #1a1a1a;
-    z-index: 10;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-}
-
-.kick-btn:hover { background: #ff6b81; }
-
-.logout-btn {
-    background: #ff4d4d;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 20px;
-}
-.logout-btn:hover { background: #ff3333; }
-
-.kick-btn-wrapper {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.5); 
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 50%;
-    z-index: 10;
-    cursor: pointer;
-}
-
-.kick-btn-wrapper .kick-btn {
-    width: 30px; height: 30px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-}
-
-.kick-btn-wrapper .material-icons { font-size: 20px; }
-
-/* MODAL SETTING */
-.modal-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85);
-    z-index: 10000;
-    display: none; 
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-box {
-    background: #1a1a1a;
-    width: 85%;
-    max-width: 400px;
-    border-radius: 15px;
-    padding: 20px;
-    border: 1px solid #333;
-}
-
-.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.close-modal { font-size: 24px; cursor: pointer; color: #888; }
-.modal-body label { display: block; margin-bottom: 5px; font-size: 14px; color: #0084ff; }
-.modal-body input, .modal-body textarea {
-    width: 100%; background: #262626; border: 1px solid #333;
-    color: white; padding: 12px; border-radius: 8px; margin-bottom: 15px;
-}
-.btn-save-setting {
-    width: 100%; padding: 12px; background: #0084ff; color: white;
-    border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
-}
-
-.menu-item-tiktok, .btn, .tab, button {
-    user-select: none; 
-}
 /* ==================================================
-   🎁 GIFT ANIMATION OVERLAY (FULL FIX)
+   7. MODALS
 ================================================== */
-#gift-anim-overlay {
-    position: fixed !important;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.4); /* Background gelap transparan */
-    display: none; /* Default sembunyi, diaktifkan via JS */
-    justify-content: center;
-    align-items: center;
-    z-index: 1000000 !important; /* Di atas segalanya */
-    pointer-events: none; /* Biar tetap bisa klik panggung di belakangnya */
-    transition: opacity 0.3s ease;
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; display: none; align-items: center; justify-content: center; }
+.modal-box { background: var(--panel-bg); width: 85%; max-width: 350px; border-radius: 20px; padding: 20px; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-header h3 { font-size: 16px; margin: 0; }
+.close-modal { font-size: 24px; cursor: pointer; color: var(--text-muted); }
+.modal-body label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--text-muted); }
+.modal-body input, .modal-body textarea { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid transparent; color: white; padding: 12px; border-radius: 10px; margin-bottom: 15px; font-size: 13px; }
+.btn-save-setting { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 700; }
+
+/* ==================================================
+   8. GIFT ANIMATION OVERLAY
+================================================== */
+#gift-anim-overlay { position: fixed !important; inset: 0; display: none; justify-content: center; align-items: center; z-index: 1000000 !important; pointer-events: none; }
+#gift-anim-img { width: 300px; max-width: 80%; transform: scale(0.5); opacity: 0; transition: all 0.4s ease; }
+#gift-anim-overlay.show { display: flex; background: rgba(0,0,0,0.5); }
+#gift-anim-overlay.show #gift-anim-img { transform: scale(1); opacity: 1; }
+/* Tampilan Pesan Gift di Kolom Chat */
+.msg.system-gift {
+    background: rgba(245, 158, 11, 0.15) !important;
+    border: 1px solid rgba(245, 158, 11, 0.3) !important;
+    border-radius: 12px !important;
+    align-self: center !important; /* Ke tengah */
+    text-align: center;
+    padding: 6px 15px;
+    margin: 8px 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #f1c40f;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    animation: giftMsgIn 0.3s ease-out;
 }
 
-#gift-anim-img {
-    width: 320px; 
-    max-width: 85%;
-    height: auto;
-    object-fit: contain;
-    filter: drop-shadow(0 0 20px rgba(241, 196, 15, 0.8)); /* Efek glow emas */
-    transform: scale(0.5); /* Start kecil buat animasi zoom */
-    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-/* Animasi saat muncul */
-#gift-anim-overlay.show #gift-anim-img {
-    transform: scale(1);
+@keyframes giftMsgIn {
+    0% { opacity: 0; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1); }
 }

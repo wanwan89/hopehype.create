@@ -120,7 +120,7 @@ async function loadRooms() {
                 <p>${room.description || 'Ayo nyanyi bareng di panggung ini!'}</p>
             </div>
             <div class="room-status">
-                <div class="online-pill">🔥 ${onlineCount} Online</div>
+                <div class="online-pill">${onlineCount} Online</div>
             </div>
         `;
         list.appendChild(card);

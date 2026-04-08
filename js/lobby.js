@@ -153,6 +153,11 @@ async function confirmCreateRoom() {
     }
 
     try {
+        // 👇 INI TRIK ANTI-ERROR NYA BREE (AUTO-CLEANUP) 👇
+        // Hapus panggung lama punya user ini (kalau masih nyangkut di database)
+        await sb.from('rooms').delete().eq('owner_id', MY_USER_ID);
+
+        // Setelah bersih, baru kita bikin panggung yang baru
         const { data: newRoom, error: roomError } = await sb.from('rooms').insert([{
             name: name,
             description: desc,

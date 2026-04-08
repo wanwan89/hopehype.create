@@ -422,28 +422,43 @@
 
     async function loadProfile() {
         try {
-            const { data } = await supabaseClient.auth.getUser();
-            const user = data?.user;
+            // 1. Ambil data login kita sendiri
+            const { data: authData } = await supabaseClient.auth.getUser();
+            const user = authData?.user;
             myId = user ? user.id : null; 
-            let searchParam = userParam; 
 
-            // Cek cache buat profile sendiri
-            if (!searchParam && !targetProfileId && myId) {
+            // 2. NANGKEP PARAMETER URL (Kuncinya di sini Bree)
+            const params = new URLSearchParams(window.location.search);
+            const userUrl = params.get('user');      // Dari lobby/post
+            const usernameUrl = params.get('username'); // Dari voice.js (yang barusan kita bikin)
+            const idUrl = params.get('id');          // Jika kirim ID langsung
+
+            // Prioritas pencarian: Username URL > ID URL > User URL
+            let searchName = usernameUrl || userUrl;
+            let searchId = idUrl;
+
+            // 3. JIKA URL KOSONG: Berarti buka profil sendiri
+            if (!searchName && !searchId && myId) {
                 const cachedProfileStr = sessionStorage.getItem(`hh_profile_${myId}`);
                 if (cachedProfileStr) {
-                    searchParam = JSON.parse(cachedProfileStr).username;
+                    searchName = JSON.parse(cachedProfileStr).username;
                 } else {
                     const { data: myProf } = await supabaseClient.from('profiles').select('username').eq('id', myId).maybeSingle();
-                    searchParam = myProf?.username;
+                    searchName = myProf?.username;
                 }
             }
 
-            targetName = searchParam || "hiilinda";
+            // 4. QUERY KE DATABASE
             let query = supabaseClient.from('profiles').select('id, username, bio, avatar_url, role');
 
-            if (targetProfileId) query = query.eq('id', targetProfileId);
-            else if (userParam) query = query.eq('username', userParam);
-            else query = query.eq('username', targetName);
+            if (searchId) {
+                query = query.eq('id', searchId);
+            } else if (searchName) {
+                query = query.eq('username', searchName);
+            } else {
+                // Fallback default jika bener-bener gak ada data
+                query = query.eq('username', 'hiilinda'); 
+            }
 
             const { data: profile, error } = await query.single();
 
@@ -452,6 +467,7 @@
                 return;
             }
 
+            // 5. SET STATE & RENDER UI
             targetProfileId = profile.id;
             targetName = profile.username;
 
@@ -459,16 +475,26 @@
             document.getElementById('view-display-name').innerText = profile.username;
             document.getElementById('view-username').innerText = '@' + profile.username.toLowerCase();
             document.getElementById('view-bio').innerText = profile.bio || 'Belum ada bio.';
-            if (profile.avatar_url) document.getElementById('view-avatar').src = profile.avatar_url;
+            
+            if (profile.avatar_url) {
+                document.getElementById('view-avatar').src = profile.avatar_url;
+            } else {
+                document.getElementById('view-avatar').src = 'asets/png/profile.png';
+            }
 
             const badgeCont = document.getElementById('badge-container');
             if (badgeCont) badgeCont.innerHTML = getUserBadge(profile.role);
 
-            initButtons(profile.id); // Panggil fungsi init yang baru (Egress Fix)
+            // Inisialisasi tombol (Edit vs Follow) & Stats
+            initButtons(profile.id); 
             updateStats(profile.id, profile.username);
+            
+            // Load konten (Foto/Musik)
             loadPosts('foto'); 
 
-        } catch (err) { console.error("Load Error:", err); }
+        } catch (err) { 
+            console.error("Load Error:", err); 
+        }
     }
 
     async function updateStats(tId, tUsername) {

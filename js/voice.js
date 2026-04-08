@@ -159,6 +159,7 @@ async function initApp() {
     if (!canEnter) return; 
     initLiveKit(); 
     listenRealtime(); 
+fetchTopGifters(); 
 }
 
 async function initLiveKit() {
@@ -220,6 +221,8 @@ function renderStage(slots) {
         if (user) {
             const lvlStyle = getLevelStyle(user.level || 1);
             const lvlBadge = getLevelBadgeHTML(user.level || 1);
+            
+            // --- FIX DI SINI: Tutup backtick-nya dengan benar ---
             item.innerHTML = `
                 <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${slot.profile_id}" onclick="${isMe ? `turunMic(${i})` : `toggleKickBtn(this, ${IS_OWNER && !isMe})`}">
                     <img src="${user.avatar_url || 'asets/png/profile.png'}">
@@ -228,9 +231,18 @@ function renderStage(slots) {
                     </div>
                     ${(IS_OWNER && !isMe) ? `<div class="kick-btn-wrapper" style="display:none;"><div class="kick-btn" onclick="event.stopPropagation(); kickUser('${slot.profile_id}', '${user.username}')"><span class="material-icons">close</span></div></div>` : ''}
                 </div>
-                <span class="name-label" style="color: ${lvlStyle.color}; text-shadow: ${lvlStyle.textShadow};">${user.username}${lvlBadge}${getUserBadge(user.role)}</span>`;
+                <span class="name-label" 
+                      onclick="window.location.href='data.html?username=${encodeURIComponent(user.username)}'" 
+                      style="color: ${lvlStyle.color}; cursor: pointer; font-weight: bold;">
+                      ${user.username}${lvlBadge}${getUserBadge(user.role)}
+                </span>`; // <--- Backtick penutup di sini!
         } else {
-            item.innerHTML = `<div class="avatar" onclick="naikKeStage(${i})"><span class="material-icons" style="color: #444; font-size: 30px;">add</span></div><span class="name-label">KOSONG</span>`;
+            // Blok ELSE kalau slot kosong
+            item.innerHTML = `
+                <div class="avatar" onclick="naikKeStage(${i})">
+                    <span class="material-icons" style="color: #444; font-size: 30px;">add</span>
+                </div>
+                <span class="name-label">KOSONG</span>`;
         }
         grid.appendChild(item);
     });
@@ -297,15 +309,20 @@ function listenRealtime() {
     const roomChannel = sb.channel(`room_active_${CURRENT_ROOM_ID}`, { config: { presence: { key: MY_USER_ID } } });
 
     roomChannel
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'room_slots', filter: `room_id=eq.${CURRENT_ROOM_ID}` }, () => { fetchStage(); })
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => { fetchStage(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'room_slots', filter: `room_id=eq.${CURRENT_ROOM_ID}` }, () => { 
+        fetchStage(); 
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => { 
+        fetchStage(); 
+    })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'room_messages', filter: `room_id=eq.${CURRENT_ROOM_ID}` }, (p) => {
         const chatBox = document.getElementById('chat-box');
         if (!chatBox) return;
 
-        if (p.eventType === 'UPDATE') {
-            const oldMsg = document.getElementById(`msg-${p.old.id}`);
-            if (oldMsg) oldMsg.remove();
+        // Jika ada update (biasanya combo gift), hapus pesan yang lama biar gak numpuk
+        if (p.eventType === 'UPDATE' || p.eventType === 'INSERT') {
+            const existingMsg = document.getElementById(`msg-${p.new.id}`);
+            if (existingMsg) existingMsg.remove();
         }
 
         const isGift = p.new.username === "SISTEM_GIFT";
@@ -316,25 +333,53 @@ function listenRealtime() {
         if (isGift) {
             div.className = 'msg system-gift'; 
             div.innerHTML = `<span>🎁 ${p.new.text}</span>`;
+            // Jalankan animasi gift untuk orang lain
             if (!isDariSaya) playGiftAnimation(parseInt(p.new.role));
         } else {
             const isSystem = p.new.username.startsWith("SISTEM");
             div.className = isSystem ? 'msg system' : 'msg';
+            
+            // Ambil style, level, dan badge
             const style = getLevelStyle(p.new.level || 1);
-            div.innerHTML = isSystem ? `<span>${p.new.text}</span>` : `<span style="color:${style.color}; font-weight:bold;">${p.new.username}:</span> <span>${p.new.text}</span>`;
+            const lvlBadge = getLevelBadgeHTML(p.new.level || 1);
+            const roleBadge = getUserBadge(p.new.role || '');
+            
+       // --- FIX: USERNAME BISA DIKLIK (VERSI LEBIH KUAT) ---
+const userLink = `
+    <span onclick="window.location.href='data.html?username=${encodeURIComponent(p.new.username)}'" 
+          style="color:${style.color}; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; position:relative; z-index:10; pointer-events:auto;">
+        ${p.new.username}${lvlBadge}${roleBadge}
+    </span>`;
+
+            
+            div.innerHTML = isSystem 
+                ? `<span>${p.new.text}</span>` 
+                : `${userLink}<span>: ${p.new.text}</span>`;
         }
+
         chatBox.appendChild(div); 
         chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+        
+        // Update Leaderboard di atas secara Realtime
+        fetchTopGifters(); 
     })
     .on('presence', { event: 'sync' }, () => {
         const countEl = document.getElementById('online-count');
         if (countEl) countEl.innerText = Object.keys(roomChannel.presenceState()).length;
     })
     .on('presence', { event: 'join' }, ({ newPresences }) => {
-        newPresences.forEach(p => { if (p.key !== MY_USER_ID && p.level >= 4) playVIPEntrance(p.username, p.level); });
+        newPresences.forEach(p => { 
+            if (p.key !== MY_USER_ID && p.level >= 4) playVIPEntrance(p.username, p.level); 
+        });
     })
     .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') await roomChannel.track({ online_at: new Date().toISOString(), username: myUsername, level: myLevel });
+        if (status === 'SUBSCRIBED') {
+            await roomChannel.track({ 
+                online_at: new Date().toISOString(), 
+                username: myUsername, 
+                level: myLevel 
+            });
+        }
     });
 }
 
@@ -364,102 +409,104 @@ function updateLevelProgressUI() {
     container.innerHTML = `<div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 6px; padding: 0 5px;"><span>LVL ${myLevel} (${currentName})</span><span>Butuh <b style="color:#f1c40f">${needed} koin</b> lagi</span></div><div style="width: 100%; height: 6px; background: #333; border-radius: 4px; overflow: hidden;"><div style="width: ${percent}%; height: 100%; background: linear-gradient(90deg, #00ff88, #00d2ff); transition: width 0.5s ease-out;"></div></div>`;
 }
 
-async function sendGift(giftName, harga, giftId) {
+let activeCombos = {}; 
+
+async function sendGift(giftName, harga, giftId, jumlah = 1) {
+    // --- VALIDASI AWAL ---
     if (!selectedTargetId) return alert("Pilih target!");
+
+    // ⛔ ANTI-GIFT DIRI SENDIRI ⛔
+    if (selectedTargetId === MY_USER_ID) {
+        if (typeof toast === "function") {
+            return toast("Waduh", "Masa nyawer diri sendiri? Bagi-bagi dong Bree! 😂", "warning");
+        }
+        return alert("Nggak bisa gift ke diri sendiri, Bree!");
+    }
     
-    // --- 1. OPTIMISTIC UI (Koin langsung berkurang di HP lu) ---
+    // --- 1. UI INSTAN (Potong koin & animasi langsung jalan) ---
     const coinDisplay = document.getElementById('user-coins');
     let saldoSkrg = parseInt(coinDisplay.innerText.replace(/[,.]/g, ''));
-    let hargaGift = parseInt(harga); 
+    let totalHarga = parseInt(harga) * jumlah; 
 
-    if (saldoSkrg < hargaGift) return alert("Koin kurang!");
+    if (saldoSkrg < totalHarga) return alert("Koin lo kurang Bree!");
     
-    const saldoBaru = saldoSkrg - hargaGift;
-    coinDisplay.innerText = saldoBaru.toLocaleString();
+    // Potong koin di layar saat itu juga biar user seneng
+    coinDisplay.innerText = (saldoSkrg - totalHarga).toLocaleString(); 
+    
+    if (typeof playGiftAnimation === "function") playGiftAnimation(giftId);
 
-    // --- 2. LOGIKA COMBO LOKAL ---
-    if (lastGiftSentName === giftName) {
-        localChatCombo++;
-    } else {
-        localChatCombo = 1;
-        lastGiftSentName = giftName;
-        lastComboMsgId = null; // Reset ID jika ganti jenis gift
+    // --- 2. SISTEM PENGEPUL (Anti Jebol) ---
+    const comboKey = `${giftName}_${selectedTargetId}`;
+
+    if (!activeCombos[comboKey]) {
+        activeCombos[comboKey] = { 
+            count: 0, 
+            pendingCoins: 0, 
+            msgId: null,
+            syncTimer: null 
+        };
     }
 
-    // Timer reset: Jika 5 detik ga klik, combo dianggap selesai
-    if (comboTimeout) clearTimeout(comboTimeout);
-    comboTimeout = setTimeout(() => {
-        localChatCombo = 0;
-        lastComboMsgId = null;
-        lastGiftSentName = "";
-    }, 5000);
+    const combo = activeCombos[comboKey];
+    combo.count += jumlah; 
+    combo.pendingCoins += totalHarga; 
 
-    // --- 3. LOCKING SYSTEM (Mencegah baris x1 berderet saat spam) ---
-    while (isInsertingGift) {
-        await new Promise(r => setTimeout(r, 50)); // Tunggu 50ms per antrean
-    }
+    if (combo.syncTimer) clearTimeout(combo.syncTimer);
+    
+    combo.syncTimer = setTimeout(async () => {
+        // --- 3. WAKTUNYA KIRIM KE DATABASE ---
+        const coinsToDeduct = combo.pendingCoins;
+        const currentCount = combo.count;
+        combo.pendingCoins = 0; 
 
-    try {
-        let newTotalGift = myTotalGiftSent + hargaGift;
-        let levelData = checkLevelUp(newTotalGift);
-        let oldLevel = myLevel;
-        
-        // Update database profil (Koin & Progres Level)
-        await sb.from('profiles').update({ 
-            coins: saldoBaru,
-            total_gift_sent: newTotalGift,
-            level: levelData.level
-        }).eq('id', MY_USER_ID);
+        try {
+            let newTotalGift = myTotalGiftSent + coinsToDeduct;
+            let levelData = checkLevelUp(newTotalGift);
+            let oldLevel = myLevel;
 
-        myTotalGiftSent = newTotalGift; 
-        myLevel = levelData.level;
-        if (typeof updateLevelProgressUI === "function") updateLevelProgressUI(); 
+            const currentCoinUI = parseInt(document.getElementById('user-coins').innerText.replace(/[,.]/g, ''));
 
-        const teksBasis = `${myUsername} mengirim ${giftName}`;
+            await sb.from('profiles').update({ 
+                coins: currentCoinUI, 
+                total_gift_sent: newTotalGift,
+                level: levelData.level
+            }).eq('id', MY_USER_ID);
 
-        // --- 4. DATABASE CHAT LOGIC ---
-        if (lastComboMsgId) {
-            // Jika ID sudah ada, lu tinggal UPDATE teksnya (x2, x3, dst)
-            await sb.from('room_messages')
-                .update({ 
-                    text: `${teksBasis} x${localChatCombo} ke ${selectedTargetName}`,
-                    created_at: new Date().toISOString() // Biar naik ke urutan chat terbaru
-                })
-                .eq('id', lastComboMsgId);
-        } else {
-            // Jika klik pertama, lu INSERT baris baru dan KUNCI antrean
-            isInsertingGift = true;
-            const { data, error } = await sb.from('room_messages').insert([{ 
-                room_id: CURRENT_ROOM_ID, 
-                username: "SISTEM_GIFT", 
-                text: `${teksBasis} x1 ke ${selectedTargetName}`, 
-                role: giftId.toString(), 
-                level: myLevel 
-            }]).select();
+            myTotalGiftSent = newTotalGift; 
+            myLevel = levelData.level;
+            if (typeof updateLevelProgressUI === "function") updateLevelProgressUI(); 
 
-            if (data && data.length > 0) {
-                lastComboMsgId = data[0].id; // Simpan ID-nya buat dipake klik berikutnya
+            const teksFinal = `${myUsername} mengirim ${giftName} x${currentCount} ke ${selectedTargetName}`;
+
+            if (combo.msgId) {
+                await sb.from('room_messages').update({ text: teksFinal }).eq('id', combo.msgId);
+            } else {
+                const { data } = await sb.from('room_messages').insert([{ 
+                    room_id: CURRENT_ROOM_ID, 
+                    username: "SISTEM_GIFT", 
+                    text: teksFinal, 
+                    role: giftId.toString(), 
+                    level: myLevel 
+                }]).select();
+
+                if (data && data.length > 0) combo.msgId = data[0].id; 
             }
-            isInsertingGift = false; // Buka kunci antrean
+
+            if (myLevel > oldLevel) {
+                await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `⭐ SELAMAT! ${myUsername} naik ke Level ${myLevel}!`, role: "admin" }]);
+            }
+
+        } catch (e) { 
+            console.error("Error sistem gift:", e.message); 
         }
 
-        // Notifikasi Level Up (Opsional)
-        if (myLevel > oldLevel) {
-            await sb.from('room_messages').insert([{ 
-                room_id: CURRENT_ROOM_ID, 
-                username: "SISTEM", 
-                text: `⭐ SELAMAT! ${myUsername} naik ke Level ${myLevel}!`, 
-                role: "admin" 
-            }]);
-        }
+        setTimeout(() => {
+            if (activeCombos[comboKey] && activeCombos[comboKey].pendingCoins === 0) {
+                delete activeCombos[comboKey];
+            }
+        }, 4000);
 
-        // Jalankan Animasi
-        if (typeof playGiftAnimation === "function") playGiftAnimation(giftId);
-
-    } catch (e) { 
-        isInsertingGift = false; // Pastikan kunci dibuka kalo error
-        console.error("Error sistem gift:", e.message); 
-    }
+    }, 500); 
 }
 
 // 8. UI INTERAKSI LAINNYA
@@ -522,15 +569,50 @@ function toggleGiftDrawer() {
 async function updateGiftTargets() {
     const targetContainer = document.getElementById('gift-targets');
     if (!targetContainer) return;
-    const { data: slots } = await sb.from('room_slots').select(`profile_id, profiles (username, avatar_url)`).eq('room_id', CURRENT_ROOM_ID).not('profile_id', 'is', null);
+
+    // 👇 FILTER: Ambil semua yang di panggung, KECUALI diri sendiri (.neq)
+    const { data: slots } = await sb.from('room_slots')
+        .select(`profile_id, profiles (username, avatar_url)`)
+        .eq('room_id', CURRENT_ROOM_ID)
+        .not('profile_id', 'is', null)
+        .neq('profile_id', MY_USER_ID); 
+
     targetContainer.innerHTML = "";
-    if (!slots || slots.length === 0) return targetContainer.innerHTML = "<span style='font-size:12px; color:#555;'>Panggung kosong</span>";
+
+    // Jika nggak ada orang lain di panggung (cuma ada lo doang)
+    if (!slots || slots.length === 0) {
+        selectedTargetId = null; // Reset target
+        selectedTargetName = "";
+        return targetContainer.innerHTML = "<span style='font-size:12px; color:#888; padding: 10px;'>Cuma ada kamu disi</span>";
+    }
+
     slots.forEach((slot, index) => {
-        const div = document.createElement('div'); div.className = `target-user ${selectedTargetId === slot.profile_id ? 'selected' : ''}`;
-        div.onclick = () => { selectedTargetId = slot.profile_id; selectedTargetName = slot.profiles.username; updateGiftTargets(); };
-        div.innerHTML = `<img src="${slot.profiles.avatar_url || 'asets/png/profile.png'}" class="target-avatar"><span class="target-name">${slot.profiles.username}</span>`;
+        const isSelected = selectedTargetId === slot.profile_id;
+        const div = document.createElement('div'); 
+        
+        // Pakai classList biar lebih aman dari error syntax 'class'
+        div.classList.add('target-user');
+        if (isSelected) div.classList.add('selected');
+        
+        div.onclick = () => { 
+            selectedTargetId = slot.profile_id; 
+            selectedTargetName = slot.profiles.username; 
+            updateGiftTargets(); 
+        };
+
+        // Pastikan pakai backtick (`) di awal dan akhir template string ini
+        div.innerHTML = `
+            <img src="${slot.profiles.avatar_url || 'asets/png/profile.png'}" class="target-avatar">
+            <span class="target-name">${slot.profiles.username}</span>
+        `;
+        
         targetContainer.appendChild(div);
-        if (!selectedTargetId && index === 0) { selectedTargetId = slot.profile_id; selectedTargetName = slot.profiles.username; div.classList.add('selected'); }
+
+        if (!selectedTargetId && index === 0) { 
+            selectedTargetId = slot.profile_id; 
+            selectedTargetName = slot.profiles.username; 
+            div.classList.add('selected'); 
+        }
     });
 }
 
@@ -577,10 +659,19 @@ async function kickUser(targetId, targetName) {
 }
 
 async function keluarRoom() {
-    if (IS_OWNER && confirm("Tutup panggung sementara dan keluar?")) {
+    if (IS_OWNER && confirm("Tutup panggung dan bersihkan riwayat? (Leaderboard akan direset)")) {
+        // Kosongin kursi panggung
         await sb.from('room_slots').update({ profile_id: null }).eq('room_id', CURRENT_ROOM_ID);
+        
+        // Tutup panggung biar ga keliatan di Lobby
         await sb.from('rooms').update({ is_active: false }).eq('id', CURRENT_ROOM_ID);
+        
+        // 👇 INI YANG BIKIN RESET BREE 👇
+        // Hapus semua chat & riwayat kado di panggung ini biar kalau dibuka lagi mulai dari 0 koin
+        await sb.from('room_messages').delete().eq('room_id', CURRENT_ROOM_ID);
     }
+    
+    // Lempar user balik ke Lobby
     window.location.href = 'lobby.html';
 }
 
@@ -636,6 +727,208 @@ async function checkUser() {
     fetchStage();
     return true; 
 }
+// --- FUNGSI LOAD TOP 3 GIFTER ---
+async function fetchTopGifters() {
+    try {
+        // Ambil maksimal 3 user dengan pengeluaran kado terbanyak (lebih dari 0)
+        const { data: topUsers, error } = await sb
+            .from('profiles')
+            .select('username, avatar_url, total_gift_sent')
+            .gt('total_gift_sent', 0) // 👇 TAMBAHIN BARIS INI JUGA BREE 👇
+            .order('total_gift_sent', { ascending: false })
+            .limit(3); 
+
+        if (error) throw error;
+        if (!topUsers || topUsers.length === 0) return;
+
+        const container = document.getElementById('top-gifters-container');
+        if (!container) return; // Kalau div-nya ga ada di HTML, skip aja
+
+        // Render HTML-nya: Tulisan TOP + 3 Avatar numpuk
+        let html = `<span style="font-size: 11px; color: #FFD700; font-weight: 800; margin-right: 6px; letter-spacing: 0.5px;">🏆 TOP</span>`;
+        html += `<div style="display: flex; align-items: center;">`;
+        
+        // Warna border: Juara 1 Emas, 2 Perak, 3 Perunggu
+        const bingkaiWarna = ['#FFD700', '#C0C0C0', '#CD7F32']; 
+        
+        topUsers.forEach((user, index) => {
+            const marginKiri = index === 0 ? '0' : '-12px'; // Biar fotonya numpuk
+            const zIndex = 3 - index; // Juara 1 posisinya paling depan
+            
+            html += `
+                <img src="${user.avatar_url || 'asets/png/profile.png'}" 
+                     title="${user.username} (Total: ${user.total_gift_sent} koin)"
+                     style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; 
+                            border: 2px solid ${bingkaiWarna[index]}; 
+                            margin-left: ${marginKiri}; 
+                            z-index: ${zIndex}; position: relative; background: #222;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+            `;
+        });
+        
+        html += `</div>`;
+        container.innerHTML = html;
+
+    } catch (err) {
+        console.error("Gagal memuat Top Gifters:", err.message);
+    }
+}
+// ==========================================
+// --- 1. FITUR HITUNG KOIN PER PANGGUNG ---
+// ==========================================
+async function getRoomLeaderboard() {
+    try {
+        // Tarik semua pesan sistem "GIFT" khusus di room ini aja
+        const { data: messages, error } = await sb
+            .from('room_messages')
+            .select('text, role')
+            .eq('room_id', CURRENT_ROOM_ID)
+            .eq('username', 'SISTEM_GIFT');
+        
+        if (error || !messages) return [];
+
+        // Daftar harga kado berdasarkan ID (sesuai HTML lo)
+        const hargaKado = { '1': 1, '2': 10, '3': 50, '4': 100, '5': 2000 };
+        let totalPerUser = {};
+
+        // Bedah teks chatnya buat ngitung koin (Contoh: "hype mengirim Love x5 ke devhope")
+        messages.forEach(m => {
+            const match = m.text.match(/^(.+) mengirim (.+) x(\d+) ke/);
+            if (match) {
+                const pengirim = match[1];
+                const jumlah = parseInt(match[3]);
+                const harga = hargaKado[m.role] || 0;
+                
+                if (!totalPerUser[pengirim]) totalPerUser[pengirim] = 0;
+                totalPerUser[pengirim] += (harga * jumlah); // Tambahin ke total
+            }
+        });
+
+        // Urutkan dari yang terbanyak dan ambil Top 10
+        const namaSultan = Object.keys(totalPerUser).sort((a, b) => totalPerUser[b] - totalPerUser[a]).slice(0, 10);
+        if (namaSultan.length === 0) return [];
+
+        // Tarik foto profil mereka dari database
+        const { data: profiles } = await sb.from('profiles').select('username, avatar_url, level, role').in('username', namaSultan);
+        if (!profiles) return [];
+
+        // Gabungin data profil sama jumlah koin panggung ini
+        let leaderboard = profiles.map(p => ({
+            ...p,
+            room_total: totalPerUser[p.username]
+        })).sort((a, b) => b.room_total - a.room_total); 
+
+        return leaderboard;
+    } catch (err) {
+        console.error("Gagal hitung koin panggung:", err);
+        return [];
+    }
+}
+
+// ==========================================
+// --- 2. RENDER TOP 3 AVATAR DI ATAS ---
+// ==========================================
+async function fetchTopGifters() {
+    const topUsers = await getRoomLeaderboard();
+    const container = document.getElementById('top-gifters-container');
+    if (!container) return;
+
+    if (topUsers.length === 0) {
+        container.innerHTML = ''; // Sembunyikan kalau room belum ada yang nyawer
+        return;
+    }
+
+    const top3 = topUsers.slice(0, 3); // Ambil 3 aja buat header
+    let html = `<span style="font-size: 11px; color: #FFD700; font-weight: 800; margin-right: 6px; letter-spacing: 0.5px;">🏆 TOP</span>`;
+    html += `<div style="display: flex; align-items: center;">`;
+    
+    const bingkaiWarna = ['#FFD700', '#C0C0C0', '#CD7F32']; 
+    
+    top3.forEach((user, index) => {
+        const marginKiri = index === 0 ? '0' : '-12px';
+        const zIndex = 3 - index; 
+        
+        html += `
+            <img src="${user.avatar_url || 'asets/png/profile.png'}" 
+                 title="${user.username} (${user.room_total} koin)"
+                 style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; 
+                        border: 2px solid ${bingkaiWarna[index]}; 
+                        margin-left: ${marginKiri}; z-index: ${zIndex}; position: relative; background: #222;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        `;
+    });
+    
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+// ==========================================
+// --- 3. MODAL LEADERBOARD PERSESI ---
+// ==========================================
+async function openTopGiftersModal() {
+    const modal = document.getElementById('top-gifters-modal');
+    const listContainer = document.getElementById('top-gifters-list');
+    if (!modal || !listContainer) return;
+
+    modal.style.display = 'flex';
+    listContainer.innerHTML = '<div style="text-align:center; color:#fff; padding: 20px;">Menghitung koin panggung... </div>';
+
+    // Kita ganti judulnya biar sesuai
+    const titleEl = modal.querySelector('.modal-header h3');
+    if (titleEl) titleEl.innerHTML = 'THE SULTAN';
+
+    const topUsers = await getRoomLeaderboard();
+
+    listContainer.innerHTML = '';
+    if (topUsers.length === 0) {
+        listContainer.innerHTML = '<div style="text-align:center; color:#888;">Belum ada kado di panggung ini. Ayo kirim yang pertama!</div>';
+        return;
+    }
+
+    topUsers.forEach((user, index) => {
+        let rankHtml = '';
+        if (index === 0) rankHtml = `<div style="background: linear-gradient(135deg, #FFDF00, #D4AF37); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(255,215,0,0.5);">1</div>`;
+        else if (index === 1) rankHtml = `<div style="background: linear-gradient(135deg, #FFFFFF, #A9A9A9); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(192,192,192,0.3);">2</div>`;
+        else if (index === 2) rankHtml = `<div style="background: linear-gradient(135deg, #FFB37C, #C56F28); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(205,127,50,0.3);">3</div>`;
+        else rankHtml = `<div style="color: #94a3b8; font-weight: 900; font-size: 16px; width: 28px; text-align: center;">${index + 1}</div>`;
+
+        const bgGradient = index === 0 ? 'background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), transparent); border-left: 4px solid #FFD700;' : 
+                           index === 1 ? 'background: linear-gradient(90deg, rgba(192, 192, 192, 0.1), transparent); border-left: 4px solid #C0C0C0;' : 
+                           index === 2 ? 'background: linear-gradient(90deg, rgba(205, 127, 50, 0.1), transparent); border-left: 4px solid #CD7F32;' : 
+                           'background: #2a3648; border-left: 4px solid transparent;';
+
+        const lvlBadge = getLevelBadgeHTML(user.level || 1);
+        const roleBadge = getUserBadge(user.role || '');
+
+        listContainer.innerHTML += `
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 6px; ${bgGradient}">
+        <div style="width: 30px; display: flex; justify-content: center;">${rankHtml}</div>
+        <img src="${user.avatar_url || 'asets/png/profile.png'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #555;">
+        <div style="flex: 1; min-width: 0;">
+            <div onclick="window.location.href='data.html?username=${encodeURIComponent(user.username)}'" 
+                 style="color: #fff; font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; cursor: pointer;">
+                ${user.username} ${lvlBadge} ${roleBadge}
+            </div>
+            <div style="color: #FFD700; font-size: 12px; margin-top: 2px; font-weight: 600;">
+                 ${(user.room_total || 0).toLocaleString()} koin
+            </div>
+        </div>
+    </div>
+`;
+
+    });
+}
+
+// --- FUNGSI TUTUP MODAL ---
+function closeTopGiftersModal() {
+    document.getElementById('top-gifters-modal').style.display = 'none';
+}
+
+// BIAR MODAL BISA DIKLIK, update sedikit fungsi fetchTopGifters lo:
+// Cari baris `container.innerHTML = html;` di dalam fungsi fetchTopGifters yang barusan lo buat.
+// Terus tambahin ini di bawahnya:
+// container.onclick = openTopGiftersModal;
+
 
 window.naikKeStage = naikKeStage;
 window.turunMic = turunMic;
@@ -653,5 +946,9 @@ window.openRoomSetting = openRoomSetting;
 window.closeRoomSetting = closeRoomSetting;
 window.saveRoomSetting = saveRoomSetting;
 window.closeConfirmModal = () => { document.getElementById('confirm-modal').style.display = 'none'; };
+
+// 👇 TAMBAHIN DUA BARIS INI BREE 👇
+window.openTopGiftersModal = openTopGiftersModal;
+window.closeTopGiftersModal = closeTopGiftersModal;
 
 initApp();

@@ -1128,3 +1128,78 @@ vapidKey: 'BJ-fS0SMZxgXvwFL8AGRf4dxL9ijWXAONctGak7-4SGM0UxojMSeWpufhfE_kiIbBBx4i
     }
   }
 }
+  // 1. Kita pilih elemen slider-nya
+  const slider = document.querySelector('.ad-slider');
+  let autoSlideTimer;
+
+  // 2. Fungsi untuk mulai geser otomatis
+  function startAutoSlide() {
+    autoSlideTimer = setInterval(() => {
+      // Cek apakah slider sudah mentok di ujung kanan
+      // (Kita beri toleransi -5 pixel agar perhitungannya aman di semua HP)
+      if (slider.scrollLeft + slider.clientWidth >= slider.scrollWidth - 5) {
+        // Kalau sudah di ujung, kembalikan ke iklan pertama (kiri mentok)
+        slider.scrollLeft = 0; 
+      } else {
+        // Kalau belum di ujung, geser sejauh 1 lebar iklan
+        slider.scrollLeft += slider.clientWidth; 
+      }
+    }, 5000); // Angka 4000 = 4 detik. Kamu bisa ubah kecepatan gantinya di sini!
+  }
+
+  // 3. Fungsi untuk menyetop otomatis (saat user sedang geser manual)
+  function stopAutoSlide() {
+    clearInterval(autoSlideTimer);
+  }
+
+  // 4. Jalankan slide otomatis saat halaman dibuka
+  startAutoSlide();
+
+  // 5. Logika pintar: Stop otomatis kalau user sedang menyentuh/menggeser, 
+  // dan nyalakan lagi kalau jarinya sudah dilepas agar tidak bentrok.
+  slider.addEventListener('touchstart', stopAutoSlide); // Jari nempel di HP
+  slider.addEventListener('touchend', startAutoSlide);  // Jari lepas dari HP
+  slider.addEventListener('mouseenter', stopAutoSlide); // Mouse masuk (di laptop)
+  slider.addEventListener('mouseleave', startAutoSlide);// Mouse keluar (di laptop)
+// =======================
+// PWA INSTALL SYSTEM
+// =======================
+let deferredPrompt; // Variabel penampung sinyal install browser
+const installAdBtn = document.getElementById('installPwaAd');
+
+// 1. Browser mengirim sinyal bahwa PWA siap diinstal
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Cegah browser memunculkan popup install otomatis yang mengganggu
+  e.preventDefault();
+  // Simpan sinyalnya ke dalam variabel kita
+  deferredPrompt = e;
+});
+
+// 2. Logika saat gambar iklan ke-4 diklik
+if (installAdBtn) {
+  installAdBtn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      // Munculkan popup install bawaan browser (seperti "Add to Home Screen")
+      deferredPrompt.prompt();
+      
+      // Tunggu respon pengguna (apakah mereka klik "Install" atau "Cancel")
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        console.log('PWA berhasil diinstal oleh pengguna!');
+      }
+      
+      // Kosongkan variabel karena satu sinyal hanya bisa dipakai satu kali
+      deferredPrompt = null;
+    } else {
+      // Jika deferredPrompt kosong, berarti aplikasi sudah terinstal, 
+      // atau browsernya tidak mendukung instalasi PWA via tombol (contoh: Safari di iPhone)
+      showToast("Info", "Aplikasi mungkin sudah terinstal, atau gunakan menu 'Add to Home Screen' di browser kamu.", "info");
+    }
+  });
+}
+
+// 3. (Opsional) Deteksi kalau instalasi sukses
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  showToast("Berhasil!", "Aplikasi HopeHype berhasil diinstal!", "success");
+});

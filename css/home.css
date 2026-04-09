@@ -2163,70 +2163,61 @@ button {
    AD BANNER (IKLAN)
 ========================= */
 .ad-banner-container {
-  position: fixed; /* Bikin posisinya selalu di atas */
-  top: 10px; /* Jarak 10px dari ujung atas layar */
+  position: fixed; 
+  top: 10px; 
   left: 50%;
-  transform: translateX(-50%); /* Trik agar posisinya persis di tengah */
-  
-  width: 380px; /* Lebarnya disamakan dengan box menu utama kamu */
-  max-width: 95%; /* Biar aman kalau dibuka di HP yang layarnya kecil banget */
-  height: 80px; /* Tingginya pas untuk mengisi area kosong 100px yang kita buat tadi */
-  
+  transform: translateX(-50%); 
+  width: 380px; 
+  max-width: 95%; 
+  height: 80px; 
   border: 2px solid #000;
   border-radius: 16px;
   box-shadow: 4px 4px 0px #00000030;
-  overflow: hidden; /* Penting! Menyembunyikan gambar yang sedang tidak tampil */
   z-index: 9999;
   background: #fff;
+  /* overflow: hidden; kita pindahkan pengaturannya ke ad-slider di bawah */
 }
 
-/* Update pada wadah slider */
+/* Wadah slider yang baru: Mendukung geser manual (Scroll Snap) */
 .ad-slider {
   display: flex;
-  width: 300%; 
+  width: 100%; 
   height: 100%;
-  /* Total 12 detik: (3 detik diam + 1 detik transisi) x 3 gambar */
-  animation: slideAd 12s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  overflow-x: auto; /* Mengizinkan geser ke kanan/kiri */
+  scroll-snap-type: x mandatory; /* Bikin efek "nempel" tiap kali digeser */
+  scroll-behavior: smooth; /* Efek geser yang mulus */
+  border-radius: 14px; /* Menyesuaikan lengkungan luar */
+  
+  /* Menyembunyikan garis scrollbar agar tetap rapi */
+  -ms-overflow-style: none;  /* Untuk IE dan Edge */
+  scrollbar-width: none;  /* Untuk Firefox */
 }
 
-/* Logika animasi untuk diam 3 detik */
-@keyframes slideAd {
-  /* Gambar 1: Diam dari 0% sampai 25% (sekitar 3 detik) */
-  0%, 25% { transform: translateX(0%); } 
-  
-  /* Transisi ke Gambar 2 antara 25% - 33% */
-  
-  /* Gambar 2: Diam dari 33% sampai 58% (sekitar 3 detik) */
-  33%, 58% { transform: translateX(-33.333%); }
-  
-  /* Transisi ke Gambar 3 antara 58% - 66% */
-  
-  /* Gambar 3: Diam dari 66% sampai 91% (sekitar 3 detik) */
-  66%, 91% { transform: translateX(-66.666%); }
-  
-  /* Transisi kembali ke awal antara 91% - 100% */
-  100% { transform: translateX(0%); }
+/* Menyembunyikan garis scrollbar di Chrome/Safari */
+.ad-slider::-webkit-scrollbar {
+  display: none; 
 }
 
-/* Tiap gambar iklan */
+/* Mengatur setiap gambar dan link agar ukurannya pas 1 banner penuh */
+.ad-slider > img,
+.ad-slider > a {
+  flex: 0 0 100%; /* Memaksa tiap elemen memakan 100% lebar layar banner */
+  height: 100%;
+  scroll-snap-align: center; /* Memastikan gambar nge-pas di tengah saat digeser */
+  display: block;
+}
+
 .ad-slide {
-  width: 33.333%; /* Membagi rata lebar untuk 3 gambar */
+  width: 100%;
   height: 100%;
-  object-fit: cover; /* Agar gambar tidak gepeng */
-}
-
-/* Animasi geser otomatis */
-@keyframes slideAd {
-  0%, 25%   { transform: translateX(0); }         /* Gambar 1 diam */
-  33%, 58%  { transform: translateX(-33.333%); }  /* Geser ke Gambar 2, lalu diam */
-  66%, 91%  { transform: translateX(-66.666%); }  /* Geser ke Gambar 3, lalu diam */
-  100%      { transform: translateX(0); }         /* Geser balik ke Gambar 1 */
+  object-fit: cover; 
 }
 
 /* Sesuaikan border kalau masuk Dark Mode biar tetep rapi */
 body.dark .ad-banner-container {
   border: 2px solid #fff;
 }
+
 .topup-ad-container {
     width: 100%;
     margin-top: 15px;    /* Jarak dari paket koin 700 */

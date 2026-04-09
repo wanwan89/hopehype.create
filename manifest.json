@@ -6,7 +6,7 @@
       "src": "asets/png/book.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "asets/png/book.png",
@@ -19,6 +19,5 @@
   "background_color": "#000000",
   "display": "standalone",
   "scope": "/",
-  "theme_color": "#1DB954",
-  "description": "Temukan musik dan koneksi baru di HopeHype."
+  "theme_color": "#1DB954"
 }

@@ -1,4 +1,7 @@
-const CACHE_NAME = 'hopehype-v1';
+// ==========================================
+// PWA CACHE SYSTEM (Supaya bisa di-install)
+// ==========================================
+const CACHE_NAME = 'hopehype-v1'; // <-- Ini sudah kuperbaiki jadi huruf 'c' kecil
 
 // File yang wajib ada supaya aplikasi bisa dibuka offline (tampilan dasar)
 const urlsToCache = [

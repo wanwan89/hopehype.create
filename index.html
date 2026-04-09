@@ -31,6 +31,27 @@
     <script src="toast.js"></script>
     <script src="js/home.js" defer></script>
 
+    <script>
+      // 1. Variabel global untuk menangkap sinyal PWA secepat mungkin
+      window.pwaPrompt = null;
+      
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.pwaPrompt = e;
+        console.log("Sinyal PWA berhasil ditangkap browser! 🚀");
+      });
+
+      // 2. Wajib: Daftarkan file Service Worker (Gabungan Firebase & PWA)
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          // UBAH NAMA FILE DI SINI 👇
+          navigator.serviceWorker.register('/firebase-messaging-sw.js')
+            .then(reg => console.log('Service Worker PWA & Firebase aktif! ✅', reg.scope))
+            .catch(err => console.error('Service Worker gagal:', err));
+        });
+      }
+    </script>
+
   </head>
   <body>
 <div class="ad-banner-container">

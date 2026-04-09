@@ -1164,42 +1164,22 @@ vapidKey: 'BJ-fS0SMZxgXvwFL8AGRf4dxL9ijWXAONctGak7-4SGM0UxojMSeWpufhfE_kiIbBBx4i
 // =======================
 // PWA INSTALL SYSTEM
 // =======================
-let deferredPrompt; // Variabel penampung sinyal install browser
 const installAdBtn = document.getElementById('installPwaAd');
 
-// 1. Browser mengirim sinyal bahwa PWA siap diinstal
-window.addEventListener('beforeinstallprompt', (e) => {
-  // Cegah browser memunculkan popup install otomatis yang mengganggu
-  e.preventDefault();
-  // Simpan sinyalnya ke dalam variabel kita
-  deferredPrompt = e;
-});
-
-// 2. Logika saat gambar iklan ke-4 diklik
 if (installAdBtn) {
   installAdBtn.addEventListener('click', async () => {
-    if (deferredPrompt) {
-      // Munculkan popup install bawaan browser (seperti "Add to Home Screen")
-      deferredPrompt.prompt();
+    // Kita cek variabel window.pwaPrompt yang ditangkap HTML tadi
+    if (window.pwaPrompt) {
+      window.pwaPrompt.prompt(); // Munculkan popup install
       
-      // Tunggu respon pengguna (apakah mereka klik "Install" atau "Cancel")
-      const { outcome } = await deferredPrompt.userChoice;
+      const { outcome } = await window.pwaPrompt.userChoice;
       if (outcome === 'accepted') {
-        console.log('PWA berhasil diinstal oleh pengguna!');
+        console.log('PWA diinstal!');
       }
       
-      // Kosongkan variabel karena satu sinyal hanya bisa dipakai satu kali
-      deferredPrompt = null;
+      window.pwaPrompt = null; // Kosongkan setelah dipakai
     } else {
-      // Jika deferredPrompt kosong, berarti aplikasi sudah terinstal, 
-      // atau browsernya tidak mendukung instalasi PWA via tombol (contoh: Safari di iPhone)
-      showToast("Info", "Aplikasi mungkin sudah terinstal, atau gunakan menu 'Add to Home Screen' di browser kamu.", "info");
+      showToast("Info", "Aplikasi sudah terinstal, atau gunakan menu 'Add to Home Screen' di browser kamu.", "info");
     }
   });
 }
-
-// 3. (Opsional) Deteksi kalau instalasi sukses
-window.addEventListener('appinstalled', () => {
-  deferredPrompt = null;
-  showToast("Berhasil!", "Aplikasi HopeHype berhasil diinstal!", "success");
-});

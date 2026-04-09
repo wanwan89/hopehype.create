@@ -19,24 +19,36 @@
 
 
   <div class="telegram-chat">
-    <div class="chat-header" style="position: relative; display: flex; align-items: center; padding: 0 15px; background: #3a7bd5; color: white; height: 65px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); overflow: visible;">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <div class="hamburger-btn" id="menu-btn" style="cursor: pointer;">
-          <div class="hamburger-line"></div>
-          <div class="hamburger-line"></div>
-          <div class="hamburger-line"></div>
-        </div>
-
-        <div style="display: flex; flex-direction: column; justify-content: center;">
-          <h3 style="margin: 0; font-size: 17px; font-weight: 600; letter-spacing: 0.3px;">HopeTalk Globe</h3>
-          <div id="status-container" style="font-size: 10px; margin-top: 1px;">
-            <span id="status-header" style="opacity: 0.85; color: white;">Hanya kamu yang online</span>
-            <span id="typing-header" style="color: #2ecc71; font-weight: 600; display: none;"></span>
-          </div>
-        </div>
-      </div>
-      <img src="asets/png/music.png" class="logo-besar-header" alt="Logo">
+<div class="chat-header" style="position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; background: #3a7bd5; color: white; height: 65px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); overflow: visible;">
+  
+  <div style="display: flex; align-items: center; gap: 12px; flex: 1; overflow: hidden;">
+    <div class="hamburger-btn" id="menu-btn" style="cursor: pointer; flex-shrink: 0;">
+      <div class="hamburger-line"></div>
+      <div class="hamburger-line"></div>
+      <div class="hamburger-line"></div>
     </div>
+
+    <div style="display: flex; flex-direction: column; justify-content: center; overflow: hidden; max-width: 140px;">
+      <h3 style="margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        HopeTalk Globe
+      </h3>
+      <div id="status-container" style="font-size: 10px; margin-top: 1px;">
+        <span id="status-header" style="opacity: 0.85; color: white;">Online</span>
+      </div>
+    </div>
+
+    <button id="btn-open-invite" style="display:none; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); color: white; padding: 5px 10px; border-radius: 15px; font-size: 9px; font-weight: 800; cursor: pointer; align-items: center; gap: 4px; flex-shrink: 0; margin-left: 5px;">
+      <i class="fa-solid fa-user-plus"></i> UNDANG
+    </button>
+  </div>
+
+  <div style="flex-shrink: 0; margin-left: 10px;">
+    <img src="asets/png/music.png" class="logo-besar-header" alt="Logo" style="height: 32px; width: auto; object-fit: contain;">
+  </div>
+
+</div>
+
+
 
     <div id="sidebar" class="sidebar">
       <div style="padding: 30px 20px; background: #3a7bd5; color: white; display: flex; flex-direction: column; align-items: center; gap: 8px;">
@@ -68,6 +80,11 @@
           CARI & CHAT
         </button>
       </div>
+<div style="padding: 10px 15px; border-bottom: 1px solid #eee;">
+  <button id="btn-open-group-modal" style="width: 100%; border: 2px dashed #3a7bd5; background: #f0f7ff; color: #3a7bd5; border-radius: 12px; padding: 10px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+    <i class="fa-solid fa-users-plus"></i> BUAT GRUP BARU
+  </button>
+</div>
 
       <div style="flex: 1; overflow-y: auto; background: white;">
         <div id="private-chat-list">
@@ -136,6 +153,45 @@
         </div>
       </div>
     </div>
+<div id="group-modal" class="delete-overlay" style="display: none; align-items: center; justify-content: center;">
+  <div class="delete-menu" style="width: 90%; max-width: 350px; padding: 25px; text-align: center;">
+    <h2 style="margin: 0 0 10px 0; font-size: 18px; color: #3a7bd5;">Buat Grup Baru</h2>
+    
+    <div style="margin-bottom: 20px; position: relative; display: inline-block;">
+      <label for="group-photo-input" style="cursor: pointer;">
+        <img id="group-photo-preview" src="asets/png/profile.png" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #3a7bd5; background: #eee;">
+        <div style="position: absolute; bottom: 0; right: 0; background: #3a7bd5; color: white; width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white;">
+          <i class="fa-solid fa-camera" style="font-size: 12px;"></i>
+        </div>
+      </label>
+      <input type="file" id="group-photo-input" accept="image/*" style="display: none;">
+    </div>
+
+    <div style="text-align: left;">
+      <label style="font-size: 11px; font-weight: 600;">Nama Grup</label>
+      <input type="text" id="in-group-name" placeholder="Contoh: Gibah Squad" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; box-sizing: border-box;">
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+      <button class="btn-confirm" id="btn-create-group" style="flex: 2;">Buat Sekarang</button>
+      <button onclick="document.getElementById('group-modal').style.display='none'" style="flex: 1; padding: 12px; border: none; border-radius: 10px; background: #ccc; color: #333; font-weight: 600; cursor: pointer;">Batal</button>
+    </div>
+  </div>
+</div>
+<div id="invite-modal" class="delete-overlay" style="display: none; align-items: center; justify-content: center;">
+  <div class="delete-menu" style="width: 90%; max-width: 350px; padding: 25px;">
+    <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #3a7bd5; text-align: center;">Undang ke Grup</h3>
+    <p style="font-size: 11px; color: #666; margin-bottom: 20px; text-align: center;">Masukkan ID Unik (tanpa #) atau Username temanmu.</p>
+
+    <input type="text" id="in-invite-search" placeholder="Contoh: 0E870 atau budi_santoso" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; box-sizing: border-box;">
+
+    <div style="display: flex; gap: 10px;">
+      <button class="btn-confirm" id="btn-invite-now" style="flex: 2;">Tambah Member</button>
+      <button onclick="document.getElementById('invite-modal').style.display='none'" style="flex: 1; padding: 12px; border: none; border-radius: 10px; background: #ccc; color: #333; font-weight: 600; cursor: pointer;">Batal</button>
+    </div>
+  </div>
+</div>
+
 
     <div class="chat-messages" id="chat-messages"></div>
 

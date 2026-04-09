@@ -24,6 +24,9 @@ let isCurrentlyTyping = false;
 let selectedMessageId = null;
 let isFirstMessageLoad = true; 
 let totalOnlineUsers = 0; // [FIX EGRESS] Simpan jumlah online di memori
+let isSidebarLoading = false; // Biar error ReferenceError hilang
+let selectedGroupFile = null; // Biar bisa upload foto grup
+
 
 // ===== DOM =====
 const messagesEl = document.getElementById("chat-messages");
@@ -85,8 +88,10 @@ async function getCachedProfile(userId) {
 let chatHistoryDebounce;
 function triggerLoadChatHistory() {
   clearTimeout(chatHistoryDebounce);
-  chatHistoryDebounce = setTimeout(() => loadChatHistory(), 1500); 
+  // Ganti loadChatHistory() jadi refreshSidebar()
+  chatHistoryDebounce = setTimeout(() => refreshSidebar(), 1500); 
 }
+
 
 // ===== Helpers =====
 function scrollToBottom() {
@@ -532,11 +537,15 @@ async function markRoomAsRead() {
     .in("status", ["sent", "delivered"]);
 }
 
-// ===== Send Message =====
+
+// FULL FIX: MULTI-CHANNEL MESSAGE FUNCTION
+// ==========================================
 async function Message() {
+  // 1. Ambil teks dan validasi
   const text = chatInput?.value.trim();
   if (!text || !currentUser) return;
 
+  // 2. Persiapan Data Balasan (Reply)
   const replyTo = chatInput.dataset.replyTo || null;
   const tempId = "temp-" + Date.now();
   let replyData = null;
@@ -552,39 +561,83 @@ async function Message() {
     }
   }
 
+  // 3. OPTIMISTIC RENDER (Tampilkan di layar sendiri dulu biar terasa cepat)
   const optimisticMsg = {
-    id: tempId, message: text, user_id: currentUser.id, username: myUsername, avatar: sideAvatar?.src || "asets/png/profile.png", role: myRole || "user", created_at: new Date().toISOString(), room_id: currentRoomId, status: "sending", reply_to_msg: replyData,
+    id: tempId,
+    message: text,
+    user_id: currentUser.id,
+    username: myUsername,
+    avatar: sideAvatar?.src || "asets/png/profile.png",
+    role: myRole || "user",
+    created_at: new Date().toISOString(),
+    room_id: currentRoomId, 
+    status: "sending", // Masih loading
+    reply_to_msg: replyData,
   };
 
   renderMessage(optimisticMsg);
   scrollToBottom();
-  chatInput.value = ""; chatInput.style.height = "auto";
+
+  // 4. Bersihkan Input Area
+  chatInput.value = ""; 
+  chatInput.style.height = "auto";
   window.cancelReply();
   if (sendSound) sendSound.play().catch(() => {});
 
+  // 5. PROSES KIRIM KE DATABASE
   try {
+    // Rancang Payload (Isi data yang akan dikirim ke Supabase)
+    const payload = { 
+      message: text, 
+      user_id: currentUser.id, 
+      username: myUsername, 
+      room_id: currentRoomId, // Berisi "room-1", "pv_...", atau "group_..."
+      reply_to: replyTo, 
+      status: "sent" 
+    };
+
+    // KUNCI ANTI-BOCOR: Jika sedang mode grup, wajib sertakan group_id
+    if (window.currentChatMode === 'group' && window.activeGroupId) {
+      payload.group_id = window.activeGroupId;
+    }
+
+    // Eksekusi Insert ke tabel messages
     const { data, error } = await supabase
       .from("messages")
-      .insert([{ message: text, user_id: currentUser.id, username: myUsername, room_id: currentRoomId, reply_to: replyTo, status: "sent" }])
+      .insert([payload])
       .select().single();
 
     if (error) throw error;
 
+    // 6. UPDATE UI SETELAH BERHASIL
     const tempEl = document.getElementById(`msg-${tempId}`);
     if (tempEl && data) { 
+        // Ubah ID sementara ke ID asli dari database
         tempEl.id = `msg-${data.id}`; 
+        // Ubah icon loading jadi centang (sent)
         updateMessageStatusUI(data.id, "sent"); 
         
-        // [FIX NOTIF BYPASS]
-        triggerPushNotif(text); 
+        // Kirim Notifikasi (Gunakan Fungsi Notifmu)
+        if (typeof triggerPushNotif === "function") {
+            triggerPushNotif(text); 
+        }
     }
 
   } catch (err) {
+    console.error("Gagal kirim:", err);
     showToast("Gagal mengirim pesan");
+    
+    // Beri tanda merah kalau gagal
     const failEl = document.getElementById(`msg-${tempId}`);
-    if (failEl) failEl.querySelector(".message-info")?.insertAdjacentHTML("beforeend", `<span style="font-size:10px; color:#ff4d4f; margin-left:4px;">failed</span>`);
+    if (failEl) {
+        failEl.querySelector(".message-info")?.insertAdjacentHTML(
+            "beforeend", 
+            `<span style="font-size:10px; color:#ff4d4f; margin-left:4px;">failed</span>`
+        );
+    }
   }
 }
+
 if (Btn) Btn.onclick = Message;
 
 if (inputEl) {
@@ -623,9 +676,9 @@ function initRealtimeMessages() {
         const newMsg = payload.new;
         
         // 1. Sidebar CUMA update kalau pesan itu PRIVATE untuk kita (Hemat Egress)
-        if (newMsg.room_id.startsWith("pv_") && newMsg.room_id.includes(currentUser.id)) {
-            triggerLoadChatHistory(); 
-        }
+        if (newMsg.room_id.startsWith("pv_") || newMsg.room_id.startsWith("group_")) {
+    triggerLoadChatHistory(); 
+}
 
         // 2. Jika pesan di ruangan yang sedang dibuka
         if (newMsg.room_id === currentRoomId) {
@@ -752,17 +805,27 @@ function renderGlobalChatItem(container) {
         <span style="font-size:11px; color:#888;">Obrolan Umum</span>
       </div>
     </div>`;
-  globalBtn.onclick = async () => {
-    currentRoomId = "room-1"; isFirstMessageLoad = true;
-    initPresence();
+globalBtn.onclick = async () => {
+    window.currentChatMode = null;
+    window.activeGroupId = null;
+    
+    // BALIKKAN KE GLOBAL
+    currentRoomId = "room-1"; 
+    
+    if (btnOpenInvite) btnOpenInvite.style.display = 'none';
+    
     const headerTitle = document.querySelector(".chat-header h3");
     if (headerTitle) headerTitle.textContent = "HopeTalk Globe";
-    await loadMessages(); updateHeaderStatus(); closeSidebar();
-  };
+    
+    messagesEl.innerHTML = ""; 
+    initPresence(); // Refresh presence ke global
+    await loadMessages(); 
+    closeSidebar();
+};
+
   container.appendChild(globalBtn);
 }
 
-let isSidebarLoading = false;
 async function loadChatHistory() {
   const privateList = document.getElementById("private-chat-list");
   if (!privateList || !currentUser || isSidebarLoading) return;
@@ -789,9 +852,10 @@ async function loadChatHistory() {
       if (msg.user_id !== currentUser.id && msg.status !== "read") unreadCountMap.set(partnerId, (unreadCountMap.get(partnerId) || 0) + 1);
     });
 
-    privateList.innerHTML = "";
-    renderGlobalChatItem(privateList);
-    const label = document.createElement("div"); label.innerHTML = `<div style="padding:10px 15px; font-size:11px; color:#999; font-weight:bold; background:#f8f9fa;">RIWAYAT CHAT PRIBADI</div>`; privateList.appendChild(label);
+    // Sub-Header untuk Private Chat
+    const label = document.createElement("div"); 
+    label.innerHTML = `<div style="padding:10px 15px; font-size:11px; color:#999; font-weight:bold; background:#f8f9fa; border-top:1px solid #eee; margin-top:10px;">RIWAYAT CHAT PRIBADI</div>`; 
+    privateList.appendChild(label);
 
     if (lastMessagesMap.size === 0) {
       privateList.innerHTML += `<div style="text-align:center; opacity:0.5; padding:20px; font-size:12px;">Belum ada riwayat chat</div>`;
@@ -865,14 +929,43 @@ if (btnSearchId) {
 }
 
 async function bukaChatPribadi(partnerId, partnerName, partnerShortId = "") {
+  // 1. PENTING: Reset Mode Chat agar tidak dianggap mode grup
+  window.currentChatMode = 'private';
+  window.activeGroupId = null;
+
+  // 2. Sembunyikan tombol invite (karena ini chat personal)
+  const btnInvite = document.getElementById('btn-open-invite');
+  if (btnInvite) btnInvite.style.display = 'none';
+
+  // Logika Room ID (Sudah Bagus)
   const ids = [currentUser.id, partnerId].sort();
-  currentRoomId = `pv_${ids[0]}_${ids[1]}`; isFirstMessageLoad = true;
+  currentRoomId = `pv_${ids[0]}_${ids[1]}`; 
+  
+  isFirstMessageLoad = true; 
   initPresence(); 
+
+  // Update Header UI
   const headerTitle = document.querySelector(".chat-header h3");
-  if (headerTitle) headerTitle.innerHTML = `${escapeHtml(partnerName)} <span style="font-size:10px; opacity:0.5;">#${escapeHtml(partnerShortId)}</span>`;
-  updateHeaderStatus(); await loadMessages(); closeSidebar(); scrollToBottom();
+  if (headerTitle) {
+    headerTitle.innerHTML = `${escapeHtml(partnerName)} <span style="font-size:10px; opacity:0.5;">#${escapeHtml(partnerShortId)}</span>`;
+  }
+  
+  const statusHeader = document.getElementById('status-header');
+  if (statusHeader) statusHeader.innerText = "Menghubungkan...";
+
+  // Eksekusi UI & Data
+  updateHeaderStatus(); 
+  await loadMessages(); 
+  closeSidebar(); 
+  scrollToBottom();
+
+  // Simpan history bacaan
   localStorage.setItem(`last_read_${currentRoomId}`, new Date().toISOString());
-  await loadChatHistory();
+  
+  // 3. Update Sidebar (Gunakan trigger agar rapi dan tidak duplikat)
+  if (typeof triggerLoadChatHistory === "function") {
+    triggerLoadChatHistory();
+  }
 }
 
 const apiKey = "vPUlBU5Qfz2ZygoEtKXVUqmIEAEcIB08";
@@ -1151,20 +1244,292 @@ if (fromId) {
         }
     }, 2000);
 }
+// Logika Preview Foto saat dipilih dari Galeri
+const groupPhotoInput = document.getElementById('group-photo-input');
+if (groupPhotoInput) {
+    groupPhotoInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            selectedGroupFile = file; // Simpan file ke variabel global
+            // Tampilkan preview di lingkaran modal
+            document.getElementById('group-photo-preview').src = URL.createObjectURL(file);
+        }
+    };
+}
+
+// =======================
+// GROUP CHAT SYSTEM
+// =======================
+
+// 1. Fungsi Buka/Tutup Modal
+document.getElementById('btn-open-group-modal').onclick = () => {
+    document.getElementById('group-modal').style.display = 'flex';
+};
+
+document.getElementById('btn-create-group').onclick = async () => {
+    const btn = document.getElementById('btn-create-group');
+    const groupName = document.getElementById('in-group-name').value.trim();
+    
+    if (!groupName) return showToast("Beri nama grup dulu bro!");
+
+    btn.innerText = "Mengunggah...";
+    btn.disabled = true;
+
+    try {
+        let finalPhotoUrl = "asets/png/profile.png"; // Default foto
+
+        // STEP 1: UPLOAD KE CLOUDINARY (Jika user pilih foto)
+        if (selectedGroupFile) {
+            const fd = new FormData();
+            fd.append("file", selectedGroupFile);
+            fd.append("upload_preset", "post_hope"); // Ganti jika presetmu berbeda
+
+            const res = await fetch("https://api.cloudinary.com/v1_1/dhhmkb8kl/image/upload", { 
+                method: "POST", body: fd 
+            });
+            const cData = await res.json();
+            
+            if (cData.secure_url) {
+                finalPhotoUrl = cData.secure_url;
+            } else {
+                console.error("Cloudinary Error:", cData);
+            }
+        }
+
+        // STEP 2: SIMPAN KE SUPABASE
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const { data: group, error: groupErr } = await supabase
+            .from('groups')
+            .insert([{ 
+                name: groupName, 
+                created_by: user.id,
+                photo_url: finalPhotoUrl // Link foto dari Cloudinary
+            }])
+            .select().single();
+
+        if (groupErr) throw groupErr;
+
+        // STEP 3: MASUKKAN SEBAGAI ANGGOTA PERTAMA
+        await supabase.from('group_members').insert([{ group_id: group.id, user_id: user.id }]);
+
+        showToast("Berhasil!", "Grup " + groupName + " sudah dibuat", "success");
+        
+        // Reset Modal
+        document.getElementById('group-modal').style.display = 'none';
+        document.getElementById('in-group-name').value = '';
+        document.getElementById('group-photo-preview').src = 'asets/png/profile.png';
+        selectedGroupFile = null;
+
+        // Refresh Sidebar biar grup barunya muncul
+        await refreshSidebar();
+
+    } catch (err) {
+        console.error(err);
+        showToast("Gagal", "Ada masalah pas bikin grup", "error");
+    } finally {
+        btn.innerText = "Buat Sekarang";
+        btn.disabled = false;
+    }
+};
+
+async function loadGroupList() {
+    const { data: { user } } = await supabase.auth.getUser();
+    const listContainer = document.getElementById('private-chat-list');
+    
+    // Query: Ambil grup dimana user terdaftar sebagai anggota
+    const { data: memberships, error } = await supabase
+        .from('group_members')
+        .select(`group_id, groups(id, name, photo_url)`)
+        .eq('user_id', user.id);
+
+    if (error || !memberships) return;
+
+    // Tambahkan Label Sub-Header
+    const label = document.createElement("div");
+    label.innerHTML = `<div style="padding:10px 15px; font-size:11px; color:#999; font-weight:bold; background:#f8f9fa; border-top:1px solid #eee; margin-top:5px;">GRUP SAYA</div>`;
+    listContainer.appendChild(label);
+
+    memberships.forEach(item => {
+        const group = item.groups;
+        if (!group) return;
+
+        const groupEl = document.createElement('div');
+        groupEl.className = 'sidebar-chat-item';
+        groupEl.style = "padding: 12px 15px; border-bottom: 1px solid rgba(0,0,0,0.03); cursor: pointer; display: flex; align-items: center; gap: 12px;";
+        
+        // Logika Foto Grup
+        const avatarHtml = group.photo_url 
+            ? `<img src="${group.photo_url}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 1px solid #eee;">`
+            : `<div style="width: 45px; height: 45px; border-radius: 50%; background: #3a7bd5; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">${group.name.substring(0, 2).toUpperCase()}</div>`;
+
+        groupEl.innerHTML = `
+            ${avatarHtml}
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 14px; color: #333;">${group.name}</div>
+              <div style="font-size: 11px; color: #aaa;">Grup Chat aktif</div>
+            </div>
+        `;
+        
+        groupEl.onclick = () => mulaiChatGrup(group.id, group.name);
+        listContainer.appendChild(groupEl);
+    });
+}
+
+// 1. Tampilkan tombol invite hanya jika masuk mode grup
+const btnOpenInvite = document.getElementById('btn-open-invite');
+
+function mulaiChatGrup(groupId, groupName) {
+    window.currentChatMode = 'group';
+    window.activeGroupId = groupId;
+    
+    // 1. KUNCI UTAMA: Ubah Room ID agar tidak numpang di "room-1" (Global)
+    // Sekarang, room ID grup kamu akan menjadi "group_12345"
+    currentRoomId = `group_${groupId}`; 
+
+    // 2. Tampilkan tombol invite
+    const btnInvite = document.getElementById('btn-open-invite');
+    if (btnInvite) btnInvite.style.display = 'flex'; 
+
+    // 3. Update Header Chat
+    const headerTitle = document.querySelector('.chat-header h3');
+    if (headerTitle) headerTitle.innerText = groupName;
+    
+    const statusHeader = document.getElementById('status-header');
+    if (statusHeader) statusHeader.innerText = "Grup Chat Terbuka";
+
+    // 4. Bersihkan layar pesan lama
+    document.getElementById('chat-messages').innerHTML = ''; 
+    
+    // 5. Tutup sidebar di HP
+    if (window.innerWidth <= 768) closeSidebar();
+
+    // 6. Muat pesan khusus untuk room_id grup ini
+    isFirstMessageLoad = true; // Biar muncul skeleton loading
+    loadMessages(); 
+    
+    // 7. Reset Presence (Biar indikator mengetik gak bocor ke global)
+    initPresence(); 
+}
+
+// [MASTER SIDEBAR] Mengatur urutan: Global -> Grup -> Private
+async function refreshSidebar() {
+  const privateList = document.getElementById("private-chat-list");
+  if (!privateList) return;
+
+  // 1. Bersihkan semua isi sidebar dulu biar fresh
+  privateList.innerHTML = "";
+
+  // 2. Render Chat Global (Paling atas)
+  renderGlobalChatItem(privateList);
+
+  // 3. Render Grup (Hanya yang diikuti)
+  await loadGroupList();
+
+  // 4. Render Riwayat Chat Pribadi (Private)
+  await loadChatHistory();
+}
+// ==========================================
+// 1. LOGIKA BUKA MODAL INVITE
+// ==========================================
+if (btnOpenInvite) {
+  btnOpenInvite.onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Biar nggak bentrok sama klik header
+    const modal = document.getElementById('invite-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      if (navigator.vibrate) navigator.vibrate(40);
+    }
+  };
+}
+
+// ==========================================
+// 2. PROSES TAMBAH MEMBER (INVITE NOW)
+// ==========================================
+const btnInviteNow = document.getElementById('btn-invite-now');
+if (btnInviteNow) {
+  btnInviteNow.onclick = async () => {
+    let input = document.getElementById('in-invite-search').value.trim();
+    // Bersihkan input dari @ atau #
+    input = input.replace('@', '').replace('#', ''); 
+
+    if (!input) return showToast("Isi ID atau Username dulu!");
+    if (!window.activeGroupId) return showToast("Grup belum terpilih!");
+
+    btnInviteNow.innerText = "Mencari...";
+    btnInviteNow.disabled = true;
+
+    try {
+      // Step A: Cari User (Smart Search: ID atau Username)
+      const { data: targetUser, error: findError } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .or(`short_id.eq.${input.toUpperCase()},username.ilike.${input}`)
+        .maybeSingle();
+
+      if (findError || !targetUser) throw new Error("User tidak ditemukan!");
+
+      // Step B: Cek apakah sudah jadi member
+      const { data: isMember } = await supabase
+        .from('group_members')
+        .select('id')
+        .eq('group_id', window.activeGroupId)
+        .eq('user_id', targetUser.id)
+        .maybeSingle();
+
+      if (isMember) throw new Error("Dia sudah ada di grup ini!");
+
+      // Step C: Masukkan ke grup
+      const { error: insertError } = await supabase
+        .from('group_members')
+        .insert([{ group_id: window.activeGroupId, user_id: targetUser.id }]);
+
+      if (insertError) throw insertError;
+
+      showToast("Berhasil!", `${targetUser.username} bergabung!`, "success");
+      document.getElementById('invite-modal').style.display = 'none';
+      document.getElementById('in-invite-search').value = '';
+
+    } catch (err) {
+      showToast("Gagal", err.message, "error");
+    } finally {
+      btnInviteNow.innerText = "Tambah Member";
+      btnInviteNow.disabled = false;
+    }
+  };
+}
 
 
 async function init() {
   try {
-    const ok = await requireLogin(); if (!ok) return;
+    // 1. Cek Login (Wajib paling pertama)
+    const ok = await requireLogin(); 
+    if (!ok) return;
+
+    // 2. Load Data Diri & Sistem Online (Presence)
     await loadProfile(); 
     await initPresence(); 
-    await loadChatHistory();
+
+    // 3. MASTER SIDEBAR (Urutan: Global -> Grup -> Private)
+    // Ini yang bikin sidebar kamu rapi dan gak double-double
+    await refreshSidebar(); 
+
+    // 4. AKTIFKAN MONITOR (Pesan masuk otomatis tanpa refresh)
     initRealtimeMessages(); 
+
+    // 5. MUAT PESAN & UI
     await loadMessages(); 
     updateHeaderStatus(); 
     fetchStickers(); 
+    
+    // 6. Terakhir: Scroll ke bawah biar gak capek scroll manual
     scrollToBottom();
-  } catch (err) { showToast("Gagal memuat chat"); }
+
+  } catch (err) { 
+    console.error("Gagal memulai aplikasi:", err); 
+  }
 }
 
+// JANGAN LUPA PANGGIL DI PALING BAWAH
 init();

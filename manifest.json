@@ -1,6 +1,6 @@
 {
-  "short_name": "HopeHype",
-  "name": "HopeHype",
+  "short_name": "HopeHype.ltd",
+  "name": "Hopehype.ltd",
   "icons": [
     {
       "src": "asets/png/book.png",
@@ -15,9 +15,10 @@
       "purpose": "any"
     }
   ],
-  "start_url": "/",
-  "background_color": "#000000",
+  "start_url": "/index.html",
+  "background_color": "#ffffff",
   "display": "standalone",
   "scope": "/",
-  "theme_color": "#1DB954"
+  "theme_color": "#1da1f2",
+  "description": "Temukan musik dan koneksi baru di HopeHype."
 }

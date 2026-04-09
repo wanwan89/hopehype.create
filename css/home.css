@@ -1724,24 +1724,35 @@ body.dark .recent-card .details h4 {
   }
 }
 
-/* Pastikan kontainer menu vertikal dan rapi */
+/* Pastikan kontainer yang membungkus avatar memiliki position: relative di CSS-mu */
+/* Contoh:
+.header-container {
+  position: relative; 
+}
+*/
+
 #avatarMenu {
   display: none; /* Akan diaktifkan jadi 'flex' lewat JS */
   flex-direction: column;
-  gap: 8px; /* Jarak antar tombol */
+  gap: 8px; 
   padding: 12px;
   background: #fff;
   border-radius: 12px;
   border: 1px solid #e4e6eb;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   min-width: 160px;
+  
+  /* --- BAGIAN POSISI YANG DIPERBAIKI --- */
   position: absolute;
-  top: 65px;
-  right: 15px;
+  top: 65px; /* Jarak dari atas (sesuaikan sedikit jika masih kurang pas dengan ikon) */
+  left: 20px; /* Kita gunakan left, bukan right, agar sejajar dengan avatar di kiri */
   z-index: 1000;
+  
+  /* Tambahan: Animasi muncul dari kiri atas agar lebih natural */
+  transform-origin: top left; 
 }
 
-/* Gaya umum untuk semua tombol dalam menu */
+/* Gaya umum untuk semua tombol dalam menu (Tetap sama, sudah bagus!) */
 #avatarMenu button {
   width: 100%;
   padding: 10px 14px;
@@ -1750,39 +1761,30 @@ body.dark .recent-card .details h4 {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  text-align: left; /* Teks rata kiri lebih elegan untuk menu */
+  text-align: left; 
   transition: 0.2s;
 }
 
-/* Gaya khusus Tombol Profil (Warna Biru) */
+/* Gaya khusus Tombol Profil (Biru) */
 #profileBtn {
-  background: #e7f3ff; /* Biru sangat muda */
-  color: #007bff; /* Biru utama */
+  background: #e7f3ff; 
+  color: #007bff; 
 }
-
-#profileBtn:hover {
-  background: #dbeafe;
-}
+#profileBtn:hover { background: #dbeafe; }
 
 /* Tombol Settings (Netral) */
 #settingsBtn {
   background: #f0f2f5;
   color: #1c1e21;
 }
+#settingsBtn:hover { background: #e4e6eb; }
 
-#settingsBtn:hover {
-  background: #e4e6eb;
-}
-
-/* Tombol Logout (Merah Lembut) */
+/* Tombol Logout/Login (Merah) */
 #logoutBtn {
   background: #fff0f3;
   color: #fe2c55;
 }
-
-#logoutBtn:hover {
-  background: #ffe4e9;
-}
+#logoutBtn:hover { background: #ffe4e9; }
 
 .top-notif {
   display: flex;

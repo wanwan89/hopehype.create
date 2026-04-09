@@ -1128,15 +1128,3 @@ vapidKey: 'BJ-fS0SMZxgXvwFL8AGRf4dxL9ijWXAONctGak7-4SGM0UxojMSeWpufhfE_kiIbBBx4i
     }
   }
 }
-
-// ==========================================
-// PEMICU OTOMATIS (TARUH DI PALING BAWAH)
-// ==========================================
-db.auth.getUser().then(({ data: { user } }) => {
-  if (user) {
-    console.log("User terdeteksi, menjalankan sistem notif...");
-    aktifkanNotifikasi(user.id);
-  } else {
-    console.log("User belum login, skip notifikasi.");
-  }
-});

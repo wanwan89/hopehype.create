@@ -320,9 +320,20 @@ function listenRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'room_slots', filter: `room_id=eq.${CURRENT_ROOM_ID}` }, () => { 
         fetchStage(); 
     })
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => { 
+    // 👇 FIX: Update koin di layar penerima secara realtime! 👇
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (p) => { 
         fetchStage(); 
+        
+        // Cek kalau yang di-update itu adalah profil kita sendiri
+        if (p.new && p.new.id === MY_USER_ID) {
+            const coinDisplay = document.getElementById('user-coins');
+            if (coinDisplay) {
+                // Update angka koin di UI langsung!
+                coinDisplay.innerText = (p.new.coins || 0).toLocaleString();
+            }
+        }
     })
+    // 👆 END FIX 👆
     .on('postgres_changes', { event: '*', schema: 'public', table: 'room_messages', filter: `room_id=eq.${CURRENT_ROOM_ID}` }, (p) => {
         const chatBox = document.getElementById('chat-box');
         if (!chatBox) return;
@@ -335,22 +346,17 @@ function listenRealtime() {
 
         const isGift = p.new.username === "SISTEM_GIFT";
         
-        // 👇 FIX BUG COMBO & DETEKSI PENGIRIM 👇
         let isDariSaya = false;
         let comboValue = 1;
         
         if (isGift) {
-            // Kita bedah teks "Budi mengirim Love x5 ke Andi"
             const match = p.new.text.match(/^(.+) mengirim .+ x(\d+) ke/);
             
             if (match) {
-                const pengirim = match[1]; // Ngambil nama "Budi"
-                comboValue = parseInt(match[2]); // Ngambil angka "5"
-                
-                // Cek dengan akurat, beneran nama kita atau bukan
+                const pengirim = match[1]; 
+                comboValue = parseInt(match[2]); 
                 isDariSaya = (pengirim === myUsername);
             } else {
-                // Fallback kalau format teksnya aneh
                 isDariSaya = p.new.text.startsWith(`${myUsername} `);
             }
         }
@@ -362,7 +368,6 @@ function listenRealtime() {
             div.className = 'msg system-gift'; 
             div.innerHTML = `<span>🎁 ${p.new.text}</span>`;
             
-            // 🔥 Sekarang animasi akan jalan di HP user lain dengan angka yang pas! 🔥
             if (!isDariSaya) {
                 playGiftAnimation(parseInt(p.new.role), comboValue);
             }
@@ -497,7 +502,7 @@ async function sendGift(giftName, harga, giftId, jumlah = 1) {
         delete activeCombos[comboKey]; 
 
         try {
-            // 👇 INI BAGIAN YANG BARU BREE (Menembus RLS Supabase) 👇
+            // 👇 MENEMBUS RLS SUPABASE 👇
             const { data: newTotalGift, error } = await sb.rpc('transfer_gift', {
                 sender_id: MY_USER_ID,
                 receiver_id: finalTargetId,
@@ -506,12 +511,15 @@ async function sendGift(giftName, harga, giftId, jumlah = 1) {
 
             if (error) {
                 console.error("Gagal transfer di server:", error.message);
+                
+                // 👇 POPUP MUNCUL KALAU DATABASE NOLAK 👇
+                alert("Gagal kirim kado! Error Database: " + error.message); 
+                
                 // Kembalikan koin di layar kalau server nolak
                 const koinBalik = parseInt(document.getElementById('user-coins').innerText.replace(/[,.]/g, '')) + coinsToDeduct;
                 document.getElementById('user-coins').innerText = koinBalik.toLocaleString();
                 return; 
             }
-            // 👆 END BAGIAN BARU 👆
 
             // --- UPDATE LEVEL PENGIRIM (Kalau naik level) ---
             let levelData = checkLevelUp(newTotalGift);

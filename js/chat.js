@@ -12,6 +12,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const sendSound = new Audio("asets/sound/send.mp3");
 const receiveSound = new Audio("asets/sound/receive.mp3");
 
+// 🔥 TAMBAHKAN DUA BARIS INI UNTUK RINGTONE 🔥
+const ringtoneSound = new Audio("asets/sound/call.wav");
+ringtoneSound.loop = true; // Biar nadanya bunyi berulang-ulang
+
+
 // ===== Global State =====
 let currentRoomId = "room-1";
 let currentReplyId = null;
@@ -1646,11 +1651,17 @@ window.updateGroupInfo = async () => {
     finally { if(btn) { btn.innerText = "Simpan Perubahan"; btn.disabled = false; } }
 };
 // ==========================================
-// 🔥 VARIABEL TIMER TELPON 🔥
+// 🔥 VARIABEL AUDIO & TIMER TELPON 🔥
 // ==========================================
 let callRingingTimeout = null; 
 let callTalkTimer = null;      
 let callSeconds = 0;           
+
+// Fungsi untuk matikan nada dering
+function stopRingtone() {
+    ringtoneSound.pause();
+    ringtoneSound.currentTime = 0;
+}
 
 function startCallTimer() {
     const statusEl = document.getElementById('call-status');
@@ -1728,6 +1739,8 @@ window.startLiveKitCall = async () => {
 };
 
 window.endCall = () => {
+    stopRingtone(); // 🔥 MATIKAN NADA DERING 🔥
+
     // Matikan semua timer
     clearTimeout(callRingingTimeout);
     stopCallTimer();
@@ -1764,10 +1777,15 @@ window.showIncomingCall = function(msgData) {
     
     if (overlay) overlay.style.display = 'flex';
     if (nameEl) nameEl.innerText = msgData.username || "Teman";
+
+    // 🔥 MAINKAN NADA DERING 🔥
+    ringtoneSound.play().catch(e => console.log("Browser blokir autoplay:", e));
 };
 
 // AKSI: Lawan bicara mencet ANGKAT
 window.answerCall = async () => {
+    stopRingtone(); // 🔥 MATIKAN NADA DERING 🔥
+
     const incomingOverlay = document.getElementById('incoming-call-overlay');
     if (incomingOverlay) incomingOverlay.style.display = 'none';
 
@@ -1785,6 +1803,8 @@ window.answerCall = async () => {
 
 // AKSI: Lawan bicara mencet TOLAK
 window.rejectCall = async () => {
+    stopRingtone(); // 🔥 MATIKAN NADA DERING 🔥
+
     const incomingOverlay = document.getElementById('incoming-call-overlay');
     if (incomingOverlay) incomingOverlay.style.display = 'none';
     

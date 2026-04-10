@@ -1645,13 +1645,42 @@ window.updateGroupInfo = async () => {
     } catch(err) { showToast("Gagal update grup"); } 
     finally { if(btn) { btn.innerText = "Simpan Perubahan"; btn.disabled = false; } }
 };
+// ==========================================
+// 🔥 VARIABEL TIMER TELPON 🔥
+// ==========================================
+let callRingingTimeout = null; 
+let callTalkTimer = null;      
+let callSeconds = 0;           
+
+function startCallTimer() {
+    const statusEl = document.getElementById('call-status');
+    callSeconds = 0;
+    if (callTalkTimer) clearInterval(callTalkTimer);
+    
+    callTalkTimer = setInterval(() => {
+        callSeconds++;
+        const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const s = String(callSeconds % 60).padStart(2, '0');
+        if (statusEl) statusEl.innerText = `${m}:${s}`;
+    }, 1000);
+}
+
+function stopCallTimer() {
+    if (callTalkTimer) {
+        clearInterval(callTalkTimer);
+        callTalkTimer = null;
+    }
+}
+
+// ==========================================
+// 🔥 FUNGSI TELPON UTAMA 🔥
+// ==========================================
 window.startLiveKitCall = async () => {
     const btn = document.getElementById('btn-start-call');
     const partnerId = btn.dataset.targetId;
     const partnerName = btn.dataset.targetName;
     if (!partnerId) return;
 
-    // Tampilkan UI Penelepon
     const overlay = document.getElementById('call-overlay');
     const statusEl = document.getElementById('call-status');
     const nameEl = document.getElementById('call-name');
@@ -1661,17 +1690,13 @@ window.startLiveKitCall = async () => {
     if (nameEl) nameEl.innerText = partnerName;
     if (statusEl) statusEl.innerText = "MEMANGGIL...";
 
-    // Ambil foto profil dari cache untuk dipasang di overlay
     const profile = await getCachedProfile(partnerId);
     if (profile && avatarEl) {
         avatarEl.src = profile.avatar_url || 'asets/png/profile.png';
     }
 
     try {
-        // 🔥 MULAI KONEK LIVEKIT (Pake Room ID chat pribadi kalian)
-        await connectToCall(currentRoomId);
-
-        // Kirim Sinyal ke Lawan lewat Supabase
+        // 1. Kirim Sinyal Dulu Biar HP Lawan Bunyi
         await supabase.from('messages').insert([{
             room_id: currentRoomId,
             message: `📞 Memanggil ${partnerName}...`,
@@ -1679,10 +1704,21 @@ window.startLiveKitCall = async () => {
             is_system: true
         }]);
 
-        if (statusEl) statusEl.innerText = "ON CALL";
-        
-        // Kasih efek getar pas nyambung
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+        // 2. Pasang Bom Waktu 30 Detik (Missed Call)
+        callRingingTimeout = setTimeout(async () => {
+            window.endCall();
+            await supabase.from('messages').insert([{
+                room_id: currentRoomId,
+                message: `☎️ Panggilan tak terjawab`,
+                user_id: currentUser.id,
+                is_system: true
+            }]);
+        }, 30000);
+
+        // 3. Kita (Penelepon) masuk ke Room duluan nunggu diangkat
+        await connectToCall(currentRoomId);
 
     } catch (err) {
         console.error("Panggilan Gagal:", err);
@@ -1692,7 +1728,11 @@ window.startLiveKitCall = async () => {
 };
 
 window.endCall = () => {
-    // 🔥 PUTUS KONEKSI LIVEKIT
+    // Matikan semua timer
+    clearTimeout(callRingingTimeout);
+    stopCallTimer();
+
+    // Putus koneksi
     if (callRoom) {
         callRoom.disconnect();
         callRoom = null;
@@ -1704,7 +1744,14 @@ window.endCall = () => {
     const incomingOverlay = document.getElementById('incoming-call-overlay');
     if (incomingOverlay) incomingOverlay.style.display = 'none';
     
-    showToast("Panggilan berakhir");
+    // Kasih tau durasi telpon pas dimatiin
+    if (callSeconds > 0) {
+        const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const s = String(callSeconds % 60).padStart(2, '0');
+        showToast(`Panggilan berakhir (${m}:${s})`);
+    } else {
+        showToast("Panggilan berakhir");
+    }
 };
 
 let callSignalData = null;
@@ -1717,9 +1764,6 @@ window.showIncomingCall = function(msgData) {
     
     if (overlay) overlay.style.display = 'flex';
     if (nameEl) nameEl.innerText = msgData.username || "Teman";
-    
-    // Bunyi ringtone (opsional)
-    // receiveSound.play(); 
 };
 
 // AKSI: Lawan bicara mencet ANGKAT
@@ -1733,7 +1777,6 @@ window.answerCall = async () => {
     const callStatus = document.getElementById('call-status');
     if (callStatus) callStatus.innerText = "CONNECTING...";
 
-    // 🔥 MASUK KE ROOM LIVEKIT YANG SAMA
     if (callSignalData) {
         await connectToCall(callSignalData.room_id);
         if (callStatus) callStatus.innerText = "ON CALL";
@@ -1746,7 +1789,6 @@ window.rejectCall = async () => {
     if (incomingOverlay) incomingOverlay.style.display = 'none';
     
     if (callSignalData) {
-        // Kirim sinyal balik ke Supabase kalau telpon ditolak
         await supabase.from('messages').insert([{
             room_id: callSignalData.room_id,
             message: `🚫 Panggilan Ditolak`,
@@ -1759,7 +1801,6 @@ window.rejectCall = async () => {
 
 async function connectToCall(roomName) {
     try {
-        // 1. Minta Token (Pake Supabase Function yang sama kayak di voice.js)
         const response = await fetch(`${SUPABASE_URL}/functions/v1/get-livekit-token`, {
             method: 'POST',
             headers: { 
@@ -1772,10 +1813,8 @@ async function connectToCall(roomName) {
         
         const data = await response.json();
 
-        // 2. Inisialisasi Room
         callRoom = new LivekitClient.Room({ adaptiveStream: true, dynacast: true });
 
-        // 3. Listener: Supaya bisa denger suara lawan
         callRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
             if (track.kind === "audio") {
                 const element = track.attach();
@@ -1784,14 +1823,21 @@ async function connectToCall(roomName) {
             }
         });
 
-        // 4. Connect! (Gunakan URL server LiveKit kamu)
+        // 🔥 DETEKSI KALAU LAWAN UDAH MASUK ROOM 🔥
+        callRoom.on(LivekitClient.RoomEvent.ParticipantConnected, (participant) => {
+            clearTimeout(callRingingTimeout); // Batalin missed call
+            startCallTimer(); // Mulai ngitung 00:01
+        });
+
         const LIVEKIT_URL = "wss://voicegrup-zxmeibkn.livekit.cloud"; 
         await callRoom.connect(LIVEKIT_URL, data.token);
-
-        // 5. Aktifkan Mic Otomatis
         await callRoom.localParticipant.setMicrophoneEnabled(true);
-        
-        console.log("✅ Berhasil masuk ke room telpon:", roomName);
+
+        // Kalau pas kita connect, ternyata lawan udah di dalam (buat penerima yang angkat telpon)
+        if (callRoom.remoteParticipants.size > 0) {
+            clearTimeout(callRingingTimeout);
+            startCallTimer();
+        }
 
     } catch (e) {
         console.error("Gagal koneksi LiveKit:", e.message);

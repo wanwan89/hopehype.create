@@ -505,10 +505,9 @@ async function sendGift(giftName, harga, giftId, jumlah = 1) {
             // 👇 MENEMBUS RLS SUPABASE 👇
             const { data: newTotalGift, error } = await sb.rpc('transfer_gift', {
                 sender_id: MY_USER_ID,
-                receiver_id: finalTargetId,
+                receiver_id: finalTargetId || selectedTargetId, // <--- Tambahin ini ya Bree!
                 amount: coinsToDeduct
             });
-
             if (error) {
                 console.error("Gagal transfer di server:", error.message);
                 

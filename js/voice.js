@@ -456,14 +456,14 @@ async function sendGift(giftName, harga, giftId, jumlah = 1) {
         return alert("Koin lo kurang Bree!");
     }
     
-    // Potong koin di UI duluan
+    // Potong koin di UI duluan biar animasi cepat
     saldoSkrg -= totalHarga;
     coinDisplay.innerText = saldoSkrg.toLocaleString(); 
     
     if (typeof playGiftAnimation === "function") playGiftAnimation(giftId);
 
     // --- 2. SISTEM PENGEPUL (Anti Spam) ---
-    // Kita "KUNCI" data target saat ini biar nggak lari kalau user ganti target cepet-cepet
+    // Kunci target saat ini
     const targetIdDikunci = selectedTargetId; 
     const targetNameDikunci = selectedTargetName;
     const comboKey = `${giftName}_${targetIdDikunci}`;
@@ -483,7 +483,6 @@ async function sendGift(giftName, harga, giftId, jumlah = 1) {
     combo.count += jumlah; 
     combo.pendingCoins += totalHarga; 
 
-    // Reset timer setiap kali diklik (debounce). Akan jalan 600ms SETELAH klik terakhir
     if (combo.syncTimer) clearTimeout(combo.syncTimer);
     
     combo.syncTimer = setTimeout(async () => {
@@ -494,60 +493,60 @@ async function sendGift(giftName, harga, giftId, jumlah = 1) {
         const finalTargetName = combo.targetName;
         const savedMsgId = combo.msgId;
 
-        // Kosongkan combo biar klik berikutnya bikin combo baru
+        // Kosongkan combo
         delete activeCombos[comboKey]; 
 
         try {
-            // --- A. CEK SALDO ASLI PENGIRIM DI DATABASE (Biar ga bisa di-bug spam) ---
-            const { data: myData } = await sb.from('profiles').select('coins, total_gift_sent').eq('id', MY_USER_ID).single();
-            
-            if (!myData || myData.coins < coinsToDeduct) {
-                console.error("Saldo asli tidak cukup!");
-                return; // Batalkan kalau ternyata saldonya nggak cukup (mencegah bug spam)
+            // 👇 INI BAGIAN YANG BARU BREE (Menembus RLS Supabase) 👇
+            const { data: newTotalGift, error } = await sb.rpc('transfer_gift', {
+                sender_id: MY_USER_ID,
+                receiver_id: finalTargetId,
+                amount: coinsToDeduct
+            });
+
+            if (error) {
+                console.error("Gagal transfer di server:", error.message);
+                // Kembalikan koin di layar kalau server nolak
+                const koinBalik = parseInt(document.getElementById('user-coins').innerText.replace(/[,.]/g, '')) + coinsToDeduct;
+                document.getElementById('user-coins').innerText = koinBalik.toLocaleString();
+                return; 
+            }
+            // 👆 END BAGIAN BARU 👆
+
+            // --- UPDATE LEVEL PENGIRIM (Kalau naik level) ---
+            let levelData = checkLevelUp(newTotalGift);
+
+            if (levelData.level !== myLevel) {
+                await sb.from('profiles').update({ level: levelData.level }).eq('id', MY_USER_ID);
+                await sb.from('room_messages').insert([{ 
+                    room_id: CURRENT_ROOM_ID, 
+                    username: "SISTEM", 
+                    text: `⭐ SELAMAT! ${myUsername} naik ke Level ${levelData.level}!`, 
+                    role: "admin" 
+                }]);
             }
 
-            let newTotalGift = (myData.total_gift_sent || 0) + coinsToDeduct;
-            let koinPengirimBaru = myData.coins - coinsToDeduct;
-            let levelData = checkLevelUp(newTotalGift);
-            let oldLevel = myLevel;
-
-            // Update Pengirim
-            await sb.from('profiles').update({ 
-                coins: koinPengirimBaru, 
-                total_gift_sent: newTotalGift,
-                level: levelData.level
-            }).eq('id', MY_USER_ID);
-
+            // Update variabel lokal progress bar
             myTotalGiftSent = newTotalGift; 
             myLevel = levelData.level;
-            document.getElementById('user-coins').innerText = koinPengirimBaru.toLocaleString(); // Sinkronkan ulang UI
             if (typeof updateLevelProgressUI === "function") updateLevelProgressUI(); 
 
-            // --- B. UPDATE KOIN PENERIMA (TARGET) ---
-            const { data: targetData } = await sb.from('profiles').select('coins').eq('id', finalTargetId).single();
-            if (targetData) {
-                const koinTargetBaru = (targetData.coins || 0) + coinsToDeduct;
-                await sb.from('profiles').update({ coins: koinTargetBaru }).eq('id', finalTargetId);
-            }
-
-            // --- C. KIRIM CHAT COMBO ---
+            // --- KIRIM CHAT COMBO ---
             const teksFinal = `${myUsername} mengirim ${giftName} x${currentCount} ke ${finalTargetName}`;
 
             if (savedMsgId) {
                 await sb.from('room_messages').update({ text: teksFinal }).eq('id', savedMsgId);
             } else {
-                await sb.from('room_messages').insert([{ 
+                const { data } = await sb.from('room_messages').insert([{ 
                     room_id: CURRENT_ROOM_ID, 
                     username: "SISTEM_GIFT", 
                     text: teksFinal, 
                     role: giftId.toString(), 
                     level: myLevel 
-                }]);
-            }
-
-            // --- D. PENGUMUMAN NAIK LEVEL ---
-            if (myLevel > oldLevel) {
-                await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `⭐ SELAMAT! ${myUsername} naik ke Level ${myLevel}!`, role: "admin" }]);
+                }]).select();
+                
+                // Simpan ID pesannya siapa tahu diklik lagi pas jeda
+                if (data && data.length > 0) activeCombos[comboKey] = { ...activeCombos[comboKey], msgId: data[0].id };
             }
 
         } catch (e) { 

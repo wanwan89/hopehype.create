@@ -935,3 +935,37 @@ body {
     transform: scale(0.9);
     background: rgba(255, 255, 255, 0.3);
 }
+/* 🔥 ANIMASI GELOMBANG AVATAR SAAT NELPON 🔥 */
+@keyframes radar-pulse {
+  0% { 
+    box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.7), 0 0 0 0 rgba(0, 210, 255, 0.4); 
+    transform: scale(0.95);
+  }
+  50% { 
+    box-shadow: 0 0 0 15px rgba(0, 210, 255, 0), 0 0 0 30px rgba(0, 210, 255, 0.2); 
+    transform: scale(1);
+  }
+  100% { 
+    box-shadow: 0 0 0 0 rgba(0, 210, 255, 0), 0 0 0 45px rgba(0, 210, 255, 0); 
+    transform: scale(0.95);
+  }
+}
+
+.anim-calling-avatar {
+  animation: radar-pulse 1.5s infinite cubic-bezier(0.66, 0, 0, 1);
+  border: 3px solid #00d2ff;
+  border-radius: 50%;
+}
+
+/* 🔥 ANIMASI TEKS KEDIP 🔥 */
+@keyframes text-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.anim-calling-text {
+  animation: text-blink 1.5s infinite ease-in-out;
+  color: #00d2ff !important;
+  font-weight: bold;
+  letter-spacing: 2px;
+}

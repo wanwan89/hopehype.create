@@ -1699,7 +1699,15 @@ window.startLiveKitCall = async () => {
 
     if (overlay) overlay.style.display = 'flex';
     if (nameEl) nameEl.innerText = partnerName;
-    if (statusEl) statusEl.innerText = "MEMANGGIL...";
+    
+    // 🔥 NYALAKAN ANIMASI 🔥
+    if (statusEl) {
+        statusEl.innerText = "MEMANGGIL...";
+        statusEl.classList.add('anim-calling-text');
+    }
+    if (avatarEl) {
+        avatarEl.classList.add('anim-calling-avatar');
+    }
 
     const profile = await getCachedProfile(partnerId);
     if (profile && avatarEl) {
@@ -1707,7 +1715,6 @@ window.startLiveKitCall = async () => {
     }
 
     try {
-        // 1. Kirim Sinyal Dulu Biar HP Lawan Bunyi
         await supabase.from('messages').insert([{
             room_id: currentRoomId,
             message: `📞 Memanggil ${partnerName}...`,
@@ -1717,7 +1724,6 @@ window.startLiveKitCall = async () => {
 
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
 
-        // 2. Pasang Bom Waktu 30 Detik (Missed Call)
         callRingingTimeout = setTimeout(async () => {
             window.endCall();
             await supabase.from('messages').insert([{
@@ -1728,7 +1734,6 @@ window.startLiveKitCall = async () => {
             }]);
         }, 30000);
 
-        // 3. Kita (Penelepon) masuk ke Room duluan nunggu diangkat
         await connectToCall(currentRoomId);
 
     } catch (err) {
@@ -1739,13 +1744,19 @@ window.startLiveKitCall = async () => {
 };
 
 window.endCall = () => {
-    stopRingtone(); // 🔥 MATIKAN NADA DERING 🔥
-
-    // Matikan semua timer
+    stopRingtone(); 
     clearTimeout(callRingingTimeout);
     stopCallTimer();
 
-    // Putus koneksi
+    // 🔥 MATIKAN ANIMASI 🔥
+    const avatarEl = document.getElementById('call-avatar');
+    const statusEl = document.getElementById('call-status');
+    if (avatarEl) avatarEl.classList.remove('anim-calling-avatar');
+    if (statusEl) {
+        statusEl.classList.remove('anim-calling-text');
+        statusEl.style.color = ""; // Reset warna
+    }
+
     if (callRoom) {
         callRoom.disconnect();
         callRoom = null;
@@ -1757,7 +1768,6 @@ window.endCall = () => {
     const incomingOverlay = document.getElementById('incoming-call-overlay');
     if (incomingOverlay) incomingOverlay.style.display = 'none';
     
-    // Kasih tau durasi telpon pas dimatiin
     if (callSeconds > 0) {
         const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
         const s = String(callSeconds % 60).padStart(2, '0');
@@ -1846,6 +1856,16 @@ async function connectToCall(roomName) {
         // 🔥 DETEKSI KALAU LAWAN UDAH MASUK ROOM 🔥
         callRoom.on(LivekitClient.RoomEvent.ParticipantConnected, (participant) => {
             clearTimeout(callRingingTimeout); // Batalin missed call
+            
+            // 🔥 MATIKAN ANIMASI & UBAH TEKS JADI IJO SAAT DIANGKAT 🔥
+            const avatarEl = document.getElementById('call-avatar');
+            const statusEl = document.getElementById('call-status');
+            if (avatarEl) avatarEl.classList.remove('anim-calling-avatar');
+            if (statusEl) {
+                statusEl.classList.remove('anim-calling-text');
+                statusEl.style.color = "#2ecc71"; // Warna hijau
+            }
+
             startCallTimer(); // Mulai ngitung 00:01
         });
 
@@ -1856,6 +1876,16 @@ async function connectToCall(roomName) {
         // Kalau pas kita connect, ternyata lawan udah di dalam (buat penerima yang angkat telpon)
         if (callRoom.remoteParticipants.size > 0) {
             clearTimeout(callRingingTimeout);
+            
+            // 🔥 SAMA, MATIKAN ANIMASI DI SINI JUGA 🔥
+            const avatarEl = document.getElementById('call-avatar');
+            const statusEl = document.getElementById('call-status');
+            if (avatarEl) avatarEl.classList.remove('anim-calling-avatar');
+            if (statusEl) {
+                statusEl.classList.remove('anim-calling-text');
+                statusEl.style.color = "#2ecc71"; // Warna hijau
+            }
+
             startCallTimer();
         }
 

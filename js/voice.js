@@ -253,13 +253,10 @@ let giftComboCount = 0;
 let lastGiftId = null;
 let giftAnimTimer = null;
 
-// 👇 FIX BUG 2: Tambah parameter 'forcedCombo' 👇
 function playGiftAnimation(giftId, forcedCombo = null) {
     const id = giftId || 1;
     const gifPath = `asets/gif/giftvid${id}.gif`; 
     
-    // Jika forcedCombo ada isinya (dari Realtime database), pakai itu.
-    // Jika tidak (dari klik layar sendiri), hitung manual.
     if (forcedCombo !== null) {
         giftComboCount = forcedCombo;
         lastGiftId = id;
@@ -296,8 +293,22 @@ function playGiftAnimation(giftId, forcedCombo = null) {
     overlay.style.display = 'flex';
     setTimeout(() => { overlay.style.opacity = '1'; }, 10);
 
-    if (giftComboCount > 1) {
-        comboEl.innerText = "x" + giftComboCount;
+    const iconPngPath = `asets/png/gift${id}.png`; 
+
+    // 👇 UKURAN GAMBAR SUDAH DIPERBESAR JADI 150px 👇
+    if (giftComboCount === 1) {
+        comboEl.innerHTML = `
+            <img src="${iconPngPath}" style="width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(3px 3px 0px #f44336);">
+        `;
+        setTimeout(() => { comboEl.style.transform = "rotate(-15deg) scale(1.2)"; }, 50);
+
+    } else if (giftComboCount > 1) {
+        comboEl.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+                <img src="${iconPngPath}" style="width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(3px 3px 0px #f44336);">
+                <span>x${giftComboCount}</span>
+            </div>
+        `;
         setTimeout(() => { comboEl.style.transform = "rotate(-15deg) scale(1.2)"; }, 50);
     }
 
@@ -565,14 +576,56 @@ async function sendGift(giftName, harga, giftId, jumlah = 1) {
 
 // 8. UI INTERAKSI LAINNYA
 async function kirimKomentar() {
+    const inputEl = document.getElementById('chat-input');
+    if (!inputEl) return;
+
+    const text = inputEl.value.trim();
+    if (!text) return; 
+
     try {
-        const inputEl = document.getElementById('chat-input');
-        const text = inputEl.value.trim();
-        if (!text) return; 
-        await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: myUsername, text: text, role: myRole, level: myLevel }]);
-        inputEl.value = ""; 
-    } catch (err) { console.error(err); }
+        const currentLevel = myLevel || 1;
+        const currentRole = myRole || "user";
+
+        const { error } = await sb.from('room_messages').insert([{ 
+            room_id: CURRENT_ROOM_ID, 
+            username: myUsername, 
+            text: text, 
+            role: currentRole, 
+            level: currentLevel 
+        }]);
+
+        if (error) {
+            console.error("Gagal kirim chat:", error.message);
+        } else {
+            inputEl.value = ""; 
+            
+            // 👇 TAMBAHAN BIAR SETELAH KIRIM, LAYAR TETAP PAS 👇
+            inputEl.focus(); 
+            inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    } catch (err) { 
+        console.error("System Error:", err); 
+    }
 }
+
+// 👇 TAMBAHKAN INI JUGA BIAR PAS KLIK KOLOM CHAT GAK KETUTUP KEYBOARD 👇
+document.addEventListener('DOMContentLoaded', () => {
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('focus', () => {
+            // Tutup laci kado kalau lagi kebuka biar gak berat layarnya
+            const drawer = document.getElementById('gift-drawer');
+            if (drawer && drawer.classList.contains('open')) {
+                toggleGiftDrawer();
+            }
+            
+            // Kasih jeda dikit nunggu keyboard naik, baru scroll ke atas
+            setTimeout(() => {
+                chatInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        });
+    }
+});
 
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('active');
@@ -752,8 +805,26 @@ async function saveRoomSetting() {
     } catch (e) { alert("Gagal simpan: " + e.message); }
 }
 
-function fixMobileHeight() { document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`); }
-window.addEventListener('resize', fixMobileHeight); fixMobileHeight();
+function fixMobileHeight() {
+    // Menghitung tinggi layar asli (real viewport)
+    let vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+    
+    // 👇 AUTO SCROLL KE INPUT SAAT DIKLIK 👇
+    const inputEl = document.getElementById('chat-input');
+    if (inputEl) {
+        inputEl.addEventListener('focus', () => {
+            setTimeout(() => {
+                inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        });
+    }
+}
+
+// Jalankan setiap kali resize (keyboard muncul = resize)
+window.addEventListener('resize', fixMobileHeight);
+window.addEventListener('orientationchange', fixMobileHeight);
+fixMobileHeight();
 
 async function checkUser() {
     const { data: { session } } = await sb.auth.getSession();
@@ -972,8 +1043,61 @@ async function openTopGiftersModal() {
 
     });
 }
+// ==========================================
+// --- FITUR SLIDE & ANTI-BENTROK KEYBOARD ---
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const giftDrawer = document.getElementById('gift-drawer');
+    const inputEl = document.getElementById('chat-input');
+    const drawerOverlay = document.getElementById('drawer-overlay');
 
-// --- FUNGSI TUTUP MODAL ---
+    if (!giftDrawer) return;
+
+    // --- 1. LOGIKA SWIPE DOWN ---
+    let startY = 0;
+    let currentY = 0;
+
+    giftDrawer.addEventListener('touchstart', (e) => {
+        startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    giftDrawer.addEventListener('touchmove', (e) => {
+        currentY = e.touches[0].clientY;
+        const diffY = currentY - startY;
+        if (diffY > 0) {
+            giftDrawer.style.transform = `translateY(${diffY}px)`;
+            giftDrawer.style.transition = 'none';
+        }
+    }, { passive: true });
+
+    giftDrawer.addEventListener('touchend', () => {
+        const diffY = currentY - startY;
+        giftDrawer.style.transform = '';
+        giftDrawer.style.transition = 'transform 0.3s ease-out';
+        if (diffY > 80 && giftDrawer.classList.contains('open')) {
+            toggleGiftDrawer();
+        }
+        startY = 0; currentY = 0;
+    });
+
+    // --- 2. JURUS ANTI-KETUTUP KEYBOARD (PENTING!) ---
+    if (inputEl) {
+        inputEl.addEventListener('focus', () => {
+            // A. Paksa tutup drawer & overlay kalau masih nangkring
+            if (giftDrawer.classList.contains('open')) {
+                giftDrawer.classList.remove('open');
+                if (drawerOverlay) drawerOverlay.classList.remove('show');
+            }
+
+            // B. Dorong input ke atas keyboard
+            setTimeout(() => {
+                inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        });
+    }
+});
+
+// --- FUNGSI TUTUP   ---
 function closeTopGiftersModal() {
     document.getElementById('top-gifters-modal').style.display = 'none';
 }

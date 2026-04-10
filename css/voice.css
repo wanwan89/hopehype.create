@@ -264,14 +264,18 @@ body, html {
 .target-user.selected .target-avatar { border-color: var(--primary); }
 .target-name { font-size: 10px; font-weight: 600; }
 
-.gift-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.gift-list { 
+    display: grid; 
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 10px; 
+    max-height: 250px; /* 👇 Batas tinggi laci kado */
+    overflow-y: auto;  /* 👇 Bikin bisa di-scroll ke bawah */
+    padding-right: 4px; /* Biar scrollbar nggak nempel ke pinggir */
+}
 .gift-item { background: var(--panel-bg); padding: 12px 6px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; }
 .gift-img { width: 45px; height: 45px; object-fit: contain; margin-bottom: 8px; }
 .gift-label { font-size: 11px; font-weight: 600; color: var(--text-muted); }
 .gift-price { font-size: 11px; color: var(--accent); font-weight: 700; margin-top: 4px; }
-
-.drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 5000; display: none; }
-.drawer-overlay.show { display: block; }
 
 /* ==================================================
    6. SIDEBAR MENU
@@ -334,4 +338,18 @@ body, html {
 @keyframes giftMsgIn {
     0% { opacity: 0; transform: scale(0.8); }
     100% { opacity: 1; transform: scale(1); }
+}
+/* Menyesuaikan tinggi layar saat keyboard muncul */
+:root {
+  --vh: 1vh;
+}
+
+body {
+  height: calc(var(--vh) * 100);
+  overflow: hidden;
+}
+
+/* Biar input chat selalu di atas keyboard */
+.footer-controls {
+  padding-bottom: env(safe-area-inset-bottom);
 }

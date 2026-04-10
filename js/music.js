@@ -312,26 +312,31 @@ let playTimer = null;
 async function playSong(song) {
   if (!miniPlayer || !audio) return;
 
+  // Reset timer hitung putar lagu lama
   if (playTimer) {
     clearTimeout(playTimer);
     playTimer = null;
   }
 
+  // Munculin bar kontrol di bawah
   miniPlayer.style.display = "flex";
 
-  // 1. MATIKAN AUDIO LOKAL DULU
+  // 1. MATIKAN AUDIO LOKAL (BIAR GAK TABRAKAN)
   audio.pause();
 
-  // 2. UNLOCK YOUTUBE UNTUK BROWSER HP (WAJIB DI SINI)
-  if (isYTReady && ytPlayer && typeof ytPlayer.unMute === 'function') {
-    ytPlayer.unMute();
-    ytPlayer.setVolume(100);
-    ytPlayer.playVideo(); 
+  // 🔥 [PENTING] UNLOCK MESIN YOUTUBE DI MOBILE 🔥
+  // Kita pancing perintah play & pause sekejap saat stack klik user masih aktif.
+  // Ini kunci biar browser HP ngijinin audio YouTube keluar.
+  if (isYTReady && ytPlayer) {
+    ytPlayer.playVideo();
+    ytPlayer.pauseVideo();
+    if (typeof ytPlayer.unMute === 'function') ytPlayer.unMute();
+    if (typeof ytPlayer.setVolume === 'function') ytPlayer.setVolume(100);
   }
 
-  // 3. LOGIKA PEMILIHAN PLAYER (HYBRID YOUTUBE API)
+  // 2. LOGIKA PEMILIHAN PLAYER (HYBRID)
   if (song.source === 'api') {
-    console.log("Mencari versi FULL YouTube Resmi untuk:", song.title);
+    if (miniTitle) miniTitle.textContent = "Mencari lagu...";
     
     const query = encodeURIComponent(`${song.title} ${song.artist} official audio`);
     const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&videoCategoryId=10&key=${YOUTUBE_API_KEY}&maxResults=1`;
@@ -342,16 +347,25 @@ async function playSong(song) {
       
       if (data.items && data.items.length > 0) {
         const videoId = data.items[0].id.videoId;
-        if (isYTReady && ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
-          ytPlayer.loadVideoById(videoId);
-          console.log("✅ SUKSES! Memutar FULL YouTube.");
-        } else {
-          throw new Error("YT Not Ready");
+        if (isYTReady && ytPlayer) {
+          // ✅ Pake format objek biar lebih stabil di Android/iOS
+          ytPlayer.loadVideoById({
+            videoId: videoId,
+            startSeconds: 0
+          });
+          
+          // Kasih jeda 600ms nunggu buffering awal, baru paksa PLAY
+          setTimeout(() => {
+            ytPlayer.playVideo();
+            if (playBtn) playBtn.textContent = "pause";
+          }, 600);
+          console.log("✅ Memutar dari YouTube API:", videoId);
         }
       } else {
-        throw new Error("Video tidak ditemukan");
+        throw new Error("Video Gak Ketemu");
       }
     } catch (e) {
+      console.error("YouTube API Gagal, balik ke audio lokal:", e.message);
       audio.src = song.audio_src;
       audio.play();
     }
@@ -360,16 +374,17 @@ async function playSong(song) {
     const ytId = String(song.id).replace('yt-', '');
     if (isYTReady && ytPlayer) { 
       ytPlayer.loadVideoById(ytId); 
-      ytPlayer.playVideo(); 
+      // Delay dikit buat handshake mobile
+      setTimeout(() => ytPlayer.playVideo(), 300);
     }
   } 
   else {
     // LAGU LOKAL (DARI SUPABASE)
     audio.src = song.audio_src.startsWith("http") ? song.audio_src : `songs/${song.audio_src}`;
-    audio.play().catch(err => console.log("Autoplay blocked/error:", err));
+    audio.play().catch(err => console.log("Autoplay di-block browser:", err));
   }
 
-  // 4. TIMER PLAY COUNT (60 Detik)
+  // 3. TIMER HITUNG JUMLAH PUTAR (60 DETIK)
   playTimer = setTimeout(async () => {
     const isPlayingAudio = !audio.paused;
     const isPlayingYT = isYTReady && ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === 1;
@@ -381,23 +396,22 @@ async function playSong(song) {
     }
   }, 60000);
 
-  // 5. UPDATE UI MINI PLAYER
+  // 4. UPDATE TAMPILAN MINI PLAYER & TOMBOL
   if (miniCover) miniCover.src = song.cover_url;
   if (miniTitle) miniTitle.textContent = song.title;
   if (miniArtist) miniArtist.textContent = song.artist;
+  if (playBtn) playBtn.textContent = "pause"; 
 
-  // --- [BARU] MEDIA SESSION API (ANTI-MATI PAS TEKAN HOME) ---
+  // 5. MEDIA SESSION (BIAR BISA DIKONTROL DARI NOTIFIKASI HP)
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: song.title,
       artist: song.artist,
       artwork: [
-        { src: song.cover_url, sizes: '96x96',   type: 'image/png' },
-        { src: song.cover_url, sizes: '512x512', type: 'image/png' },
+        { src: song.cover_url, sizes: '512x512', type: 'image/png' }
       ]
     });
 
-    // Kontrol dari Notifikasi HP
     navigator.mediaSession.setActionHandler('play', () => {
       if (song.source === 'youtube' || song.source === 'api') ytPlayer.playVideo();
       else audio.play();
@@ -410,22 +424,18 @@ async function playSong(song) {
       if (playBtn) playBtn.textContent = "play_arrow";
     });
 
-    navigator.mediaSession.setActionHandler('nexttrack', () => {
-       window.skipNext(); 
-    });
-
-    navigator.mediaSession.setActionHandler('previoustrack', () => {
-       window.skipPrevious(); 
-    });
+    navigator.mediaSession.setActionHandler('nexttrack', () => { window.skipNext(); });
+    navigator.mediaSession.setActionHandler('previoustrack', () => { window.skipPrevious(); });
   }
 
-  // 6. UPDATE BACKGROUND & STYLE
+  // 6. UPDATE VISUAL BACKGROUND & BORDER
   document.body.style.background = `linear-gradient(to bottom, rgba(13, 17, 23, 0.9), #0d1117), url('${song.cover_url}') center/cover no-repeat`;
 
   document.querySelectorAll(".playlist-card").forEach((card, idx) => {
     card.style.borderColor = idx === currentSongIndex ? "#1f3cff" : "#30363d";
   });
 }
+
 window.skipNext = function() {
   currentSongIndex++;
   if (currentSongIndex >= currentSongsList.length) currentSongIndex = 0;

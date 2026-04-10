@@ -127,7 +127,9 @@ Jangan gunakan kata kasar, hinaan, atau bullying dalam bentuk apa pun. Selalu ja
             <span class="material-icons">redeem</span>
         </button>
         <div class="input-wrapper">
-            <input type="text" id="chat-input" placeholder="Ketik komentar..." autocomplete="off" onkeydown="if(event.key === 'Enter') kirimKomentar()">
+<input type="text" id="chat-input" placeholder="Ketik komentar..." autocomplete="off" 
+       onkeydown="if(event.key === 'Enter') kirimKomentar()">
+
             <button class="btn-send" onclick="kirimKomentar()">
                 <span class="material-icons" style="font-size: 18px; margin-left: 3px;">send</span>
             </button>
@@ -142,10 +144,14 @@ Jangan gunakan kata kasar, hinaan, atau bullying dalam bentuk apa pun. Selalu ja
     
     <div class="drawer-header">
         <span class="drawer-title">KIRIM HADIAH</span>
-        <div class="coin-panel">
-            <span id="user-coins">0</span>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="coin-panel">
+                <span id="user-coins">0</span>
+            </div>
+            <span class="material-icons" onclick="toggleGiftDrawer()" style="color: #94a3b8; font-size: 26px; cursor: pointer;">cancel</span>
         </div>
     </div>
+
 
     <div id="level-progress-container" style="margin: 15px 20px 5px 20px;"></div>
     
@@ -155,38 +161,67 @@ Jangan gunakan kata kasar, hinaan, atau bullying dalam bentuk apa pun. Selalu ja
             </div>
     </div>
 
-    <div class="gift-list">
-        <div class="gift-item" onclick="sendGift('Love', 1, 1)">
-            <img src="asets/png/gift1.png" class="gift-img">
-            <span class="gift-label">LOVE</span>
-            <span class="gift-price">1</span>
-        </div>
-        
-        <div class="gift-item" onclick="sendGift('Daebak', 10, 2)">
-            <img src="asets/png/gift2.png" class="gift-img">
-            <span class="gift-label">DAEBAK</span>
-            <span class="gift-price">10</span>
-        </div>
-        
-        <div class="gift-item" onclick="sendGift('Omoomo', 50, 3)">
-            <img src="asets/png/gift3.png" class="gift-img">
-            <span class="gift-label">OMOOMO</span>
-            <span class="gift-price">50</span>
-        </div>
-        
-        <div class="gift-item" onclick="sendGift('Oppa', 100, 4)">
-            <img src="asets/png/gift4.png" class="gift-img">
-            <span class="gift-label">OPPA</span>
-            <span class="gift-price">100</span>
-        </div>
-        
-        <div class="gift-item" onclick="sendGift('Figthing', 2000, 5)">
-            <img src="asets/png/gift5.png" class="gift-img">
-            <span class="gift-label">FIGHTING</span>
-            <span class="gift-price">2000</span>
-        </div>
+<div class="gift-list">
+    <div class="gift-item" onclick="sendGift('Love', 1, 1)">
+        <img src="asets/png/gift1.png" class="gift-img">
+        <span class="gift-label">LOVE</span>
+        <span class="gift-price">1</span>
     </div>
-</div> 
+    
+    <div class="gift-item" onclick="sendGift('Daebak', 10, 2)">
+        <img src="asets/png/gift2.png" class="gift-img">
+        <span class="gift-label">DAEBAK</span>
+        <span class="gift-price">10</span>
+    </div>
+    
+    <div class="gift-item" onclick="sendGift('Omoomo', 50, 3)">
+        <img src="asets/png/gift3.png" class="gift-img">
+        <span class="gift-label">OMOOMO</span>
+        <span class="gift-price">50</span>
+    </div>
+    
+    <div class="gift-item" onclick="sendGift('Oppa', 100, 4)">
+        <img src="asets/png/gift4.png" class="gift-img">
+        <span class="gift-label">OPPA</span>
+        <span class="gift-price">100</span>
+    </div>
+    
+    <div class="gift-item" onclick="sendGift('Fighting', 2000, 5)">
+        <img src="asets/png/gift5.png" class="gift-img">
+        <span class="gift-label">FIGHTING</span>
+        <span class="gift-price">2000</span>
+    </div>
+
+    <div class="gift-item" onclick="sendGift('Saranghae', 5000, 6)">
+        <img src="asets/png/gift6.png" class="gift-img">
+        <span class="gift-label">SARANGHAE</span>
+        <span class="gift-price">5000</span>
+    </div>
+
+    <div class="gift-item" onclick="sendGift('Kiyowo', 10000, 7)">
+        <img src="asets/png/gift7.png" class="gift-img">
+        <span class="gift-label">KIYOWO</span>
+        <span class="gift-price">10000</span>
+    </div>
+
+    <div class="gift-item" onclick="sendGift('Gomawo', 25000, 8)">
+        <img src="asets/png/gift8.png" class="gift-img">
+        <span class="gift-label">GOMAWO</span>
+        <span class="gift-price">25000</span>
+    </div>
+
+    <div class="gift-item" onclick="sendGift('Daesang', 50000, 9)">
+        <img src="asets/png/gift9.png" class="gift-img">
+        <span class="gift-label">DAESANG</span>
+        <span class="gift-price">50000</span>
+    </div>
+
+    <div class="gift-item" onclick="sendGift('Sultan', 100000, 10)">
+        <img src="asets/png/gift10.png" class="gift-img">
+        <span class="gift-label">SULTAN</span>
+        <span class="gift-price">100000</span>
+    </div>
+</div>
 
 <div id="gift-anim-overlay">
     <img id="gift-anim-img" src="" alt="Gift Animation">

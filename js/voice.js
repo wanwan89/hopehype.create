@@ -327,14 +327,34 @@ function listenRealtime() {
         const chatBox = document.getElementById('chat-box');
         if (!chatBox) return;
 
-        // Jika ada update (biasanya combo gift), hapus pesan yang lama biar gak numpuk
+        // Jika ada update, hapus pesan lama biar gak numpuk
         if (p.eventType === 'UPDATE' || p.eventType === 'INSERT') {
             const existingMsg = document.getElementById(`msg-${p.new.id}`);
             if (existingMsg) existingMsg.remove();
         }
 
         const isGift = p.new.username === "SISTEM_GIFT";
-        const isDariSaya = isGift && p.new.text.includes(myUsername);
+        
+        // 👇 FIX BUG COMBO & DETEKSI PENGIRIM 👇
+        let isDariSaya = false;
+        let comboValue = 1;
+        
+        if (isGift) {
+            // Kita bedah teks "Budi mengirim Love x5 ke Andi"
+            const match = p.new.text.match(/^(.+) mengirim .+ x(\d+) ke/);
+            
+            if (match) {
+                const pengirim = match[1]; // Ngambil nama "Budi"
+                comboValue = parseInt(match[2]); // Ngambil angka "5"
+                
+                // Cek dengan akurat, beneran nama kita atau bukan
+                isDariSaya = (pengirim === myUsername);
+            } else {
+                // Fallback kalau format teksnya aneh
+                isDariSaya = p.new.text.startsWith(`${myUsername} `);
+            }
+        }
+
         const div = document.createElement('div'); 
         div.id = `msg-${p.new.id}`;
         
@@ -342,32 +362,23 @@ function listenRealtime() {
             div.className = 'msg system-gift'; 
             div.innerHTML = `<span>🎁 ${p.new.text}</span>`;
             
-            // 👇 FIX BUG 2: Baca teks untuk dapat angka combo-nya 👇
+            // 🔥 Sekarang animasi akan jalan di HP user lain dengan angka yang pas! 🔥
             if (!isDariSaya) {
-                // Cari angka setelah huruf 'x' dan sebelum kata 'ke'
-                const match = p.new.text.match(/x(\d+) ke/);
-                const comboValue = match ? parseInt(match[1]) : 1;
-                
-                // Masukkan comboValue ke animasi
                 playGiftAnimation(parseInt(p.new.role), comboValue);
             }
         } else {
-
             const isSystem = p.new.username.startsWith("SISTEM");
             div.className = isSystem ? 'msg system' : 'msg';
             
-            // Ambil style, level, dan badge
             const style = getLevelStyle(p.new.level || 1);
             const lvlBadge = getLevelBadgeHTML(p.new.level || 1);
             const roleBadge = getUserBadge(p.new.role || '');
             
-       // --- FIX: USERNAME BISA DIKLIK (VERSI LEBIH KUAT) ---
-const userLink = `
-    <span onclick="window.location.href='data.html?username=${encodeURIComponent(p.new.username)}'" 
-          style="color:${style.color}; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; position:relative; z-index:10; pointer-events:auto;">
-        ${p.new.username}${lvlBadge}${roleBadge}
-    </span>`;
-
+            const userLink = `
+                <span onclick="window.location.href='data.html?username=${encodeURIComponent(p.new.username)}'" 
+                      style="color:${style.color}; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; position:relative; z-index:10; pointer-events:auto;">
+                    ${p.new.username}${lvlBadge}${roleBadge}
+                </span>`;
             
             div.innerHTML = isSystem 
                 ? `<span>${p.new.text}</span>` 
@@ -377,7 +388,6 @@ const userLink = `
         chatBox.appendChild(div); 
         chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
         
-        // Update Leaderboard di atas secara Realtime
         fetchTopGifters(); 
     })
     .on('presence', { event: 'sync' }, () => {
@@ -432,32 +442,36 @@ async function sendGift(giftName, harga, giftId, jumlah = 1) {
     // --- VALIDASI AWAL ---
     if (!selectedTargetId) return alert("Pilih target!");
 
-    // ⛔ ANTI-GIFT DIRI SENDIRI ⛔
     if (selectedTargetId === MY_USER_ID) {
-        if (typeof toast === "function") {
-            return toast("Waduh", "Masa nyawer diri sendiri? Bagi-bagi dong Bree! 😂", "warning");
-        }
+        if (typeof toast === "function") toast("Waduh", "Masa nyawer diri sendiri?", "warning");
         return alert("Nggak bisa gift ke diri sendiri, Bree!");
     }
     
-    // --- 1. UI INSTAN (Potong koin & animasi langsung jalan) ---
+    // --- 1. UI INSTAN (Biar kerasa responsif pas dispam) ---
     const coinDisplay = document.getElementById('user-coins');
     let saldoSkrg = parseInt(coinDisplay.innerText.replace(/[,.]/g, ''));
     let totalHarga = parseInt(harga) * jumlah; 
 
-    if (saldoSkrg < totalHarga) return alert("Koin lo kurang Bree!");
+    if (saldoSkrg < totalHarga) {
+        return alert("Koin lo kurang Bree!");
+    }
     
-    // Potong koin di layar saat itu juga biar user seneng
-    coinDisplay.innerText = (saldoSkrg - totalHarga).toLocaleString(); 
+    // Potong koin di UI duluan
+    saldoSkrg -= totalHarga;
+    coinDisplay.innerText = saldoSkrg.toLocaleString(); 
     
-    // Animasi untuk si pengirim (tanpa parameter tambahan)
     if (typeof playGiftAnimation === "function") playGiftAnimation(giftId);
 
-    // --- 2. SISTEM PENGEPUL (Anti Jebol) ---
-    const comboKey = `${giftName}_${selectedTargetId}`;
+    // --- 2. SISTEM PENGEPUL (Anti Spam) ---
+    // Kita "KUNCI" data target saat ini biar nggak lari kalau user ganti target cepet-cepet
+    const targetIdDikunci = selectedTargetId; 
+    const targetNameDikunci = selectedTargetName;
+    const comboKey = `${giftName}_${targetIdDikunci}`;
 
     if (!activeCombos[comboKey]) {
         activeCombos[comboKey] = { 
+            targetId: targetIdDikunci,
+            targetName: targetNameDikunci,
             count: 0, 
             pendingCoins: 0, 
             msgId: null,
@@ -469,73 +483,78 @@ async function sendGift(giftName, harga, giftId, jumlah = 1) {
     combo.count += jumlah; 
     combo.pendingCoins += totalHarga; 
 
+    // Reset timer setiap kali diklik (debounce). Akan jalan 600ms SETELAH klik terakhir
     if (combo.syncTimer) clearTimeout(combo.syncTimer);
     
     combo.syncTimer = setTimeout(async () => {
-        // --- 3. WAKTUNYA KIRIM KE DATABASE ---
+        // --- 3. AMBIL DATA DARI PENGEPUL & HAPUS DARI ANTREAN ---
         const coinsToDeduct = combo.pendingCoins;
         const currentCount = combo.count;
-        combo.pendingCoins = 0; 
+        const finalTargetId = combo.targetId;
+        const finalTargetName = combo.targetName;
+        const savedMsgId = combo.msgId;
+
+        // Kosongkan combo biar klik berikutnya bikin combo baru
+        delete activeCombos[comboKey]; 
 
         try {
-            // A. Update Data Pengirim
-            let newTotalGift = myTotalGiftSent + coinsToDeduct;
+            // --- A. CEK SALDO ASLI PENGIRIM DI DATABASE (Biar ga bisa di-bug spam) ---
+            const { data: myData } = await sb.from('profiles').select('coins, total_gift_sent').eq('id', MY_USER_ID).single();
+            
+            if (!myData || myData.coins < coinsToDeduct) {
+                console.error("Saldo asli tidak cukup!");
+                return; // Batalkan kalau ternyata saldonya nggak cukup (mencegah bug spam)
+            }
+
+            let newTotalGift = (myData.total_gift_sent || 0) + coinsToDeduct;
+            let koinPengirimBaru = myData.coins - coinsToDeduct;
             let levelData = checkLevelUp(newTotalGift);
             let oldLevel = myLevel;
 
-            const currentCoinUI = parseInt(document.getElementById('user-coins').innerText.replace(/[,.]/g, ''));
-
+            // Update Pengirim
             await sb.from('profiles').update({ 
-                coins: currentCoinUI, 
+                coins: koinPengirimBaru, 
                 total_gift_sent: newTotalGift,
                 level: levelData.level
             }).eq('id', MY_USER_ID);
 
             myTotalGiftSent = newTotalGift; 
             myLevel = levelData.level;
+            document.getElementById('user-coins').innerText = koinPengirimBaru.toLocaleString(); // Sinkronkan ulang UI
             if (typeof updateLevelProgressUI === "function") updateLevelProgressUI(); 
 
-            // 👇 FIX BUG 1: UPDATE KOIN PENERIMA (TARGET) 👇
-            const { data: targetData } = await sb.from('profiles').select('coins').eq('id', selectedTargetId).single();
+            // --- B. UPDATE KOIN PENERIMA (TARGET) ---
+            const { data: targetData } = await sb.from('profiles').select('coins').eq('id', finalTargetId).single();
             if (targetData) {
                 const koinTargetBaru = (targetData.coins || 0) + coinsToDeduct;
-                await sb.from('profiles').update({ coins: koinTargetBaru }).eq('id', selectedTargetId);
+                await sb.from('profiles').update({ coins: koinTargetBaru }).eq('id', finalTargetId);
             }
-            // 👆 END FIX BUG 1 👆
 
-            // B. Kirim Pesan Sistem (SISTEM_GIFT)
-            const teksFinal = `${myUsername} mengirim ${giftName} x${currentCount} ke ${selectedTargetName}`;
+            // --- C. KIRIM CHAT COMBO ---
+            const teksFinal = `${myUsername} mengirim ${giftName} x${currentCount} ke ${finalTargetName}`;
 
-            if (combo.msgId) {
-                await sb.from('room_messages').update({ text: teksFinal }).eq('id', combo.msgId);
+            if (savedMsgId) {
+                await sb.from('room_messages').update({ text: teksFinal }).eq('id', savedMsgId);
             } else {
-                const { data } = await sb.from('room_messages').insert([{ 
+                await sb.from('room_messages').insert([{ 
                     room_id: CURRENT_ROOM_ID, 
                     username: "SISTEM_GIFT", 
                     text: teksFinal, 
                     role: giftId.toString(), 
                     level: myLevel 
-                }]).select();
-
-                if (data && data.length > 0) combo.msgId = data[0].id; 
+                }]);
             }
 
-            // C. Pengumuman Naik Level
+            // --- D. PENGUMUMAN NAIK LEVEL ---
             if (myLevel > oldLevel) {
                 await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `⭐ SELAMAT! ${myUsername} naik ke Level ${myLevel}!`, role: "admin" }]);
             }
 
         } catch (e) { 
-            console.error("Error sistem gift:", e.message); 
+            console.error("Error eksekusi sistem gift:", e.message); 
         }
 
-        setTimeout(() => {
-            if (activeCombos[comboKey] && activeCombos[comboKey].pendingCoins === 0) {
-                delete activeCombos[comboKey];
-            }
-        }, 4000);
-
-    }, 500); 
+    }, 600); 
 }
 
 // 8. UI INTERAKSI LAINNYA

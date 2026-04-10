@@ -69,15 +69,20 @@ async function getCachedProfile(userId) {
   if (profileCache.has(userId)) return profileCache.get(userId);
 
   const localKey = `hh_profile_${userId}`;
+  const cacheTimeKey = `hh_profile_time_${userId}`;
+  
   const cached = localStorage.getItem(localKey);
-  if (cached) {
+  const cacheTime = localStorage.getItem(cacheTimeKey);
+  
+  // Kalau ada cache DAN umurnya belum lewat 1 jam (3600000 ms)
+  if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < 3600000)) {
     const data = JSON.parse(cached);
     profileCache.set(userId, data); 
     return data;
   }
 
-  console.log("Minta data ke DB untuk user:", userId);
-  const { data } = await supabase
+  console.log("Minta data BARU ke DB untuk user:", userId);
+  const { data, error } = await supabase
     .from('profiles')
     .select('username, avatar_url, role, short_id, gender')
     .eq('id', userId)
@@ -85,6 +90,7 @@ async function getCachedProfile(userId) {
 
   if (data) {
     localStorage.setItem(localKey, JSON.stringify(data));
+    localStorage.setItem(cacheTimeKey, Date.now().toString()); // Simpan waktu jam berapa data diambil
     profileCache.set(userId, data);
   }
   return data;

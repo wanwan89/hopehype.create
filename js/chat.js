@@ -1,3 +1,5 @@
+ 
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
 // ===== Supabase config =====
@@ -25,7 +27,10 @@ let selectedMessageId = null;
 let isFirstMessageLoad = true; 
 let totalOnlineUsers = 0; 
 let isSidebarLoading = false; 
-let selectedGroupFile = null; 
+let selectedGroupFile = null;
+let callRoom; // Ini buat nyimpen instance room LiveKit pas telponan
+
+
 
 // ===== DOM =====
 const messagesEl = document.getElementById("chat-messages");
@@ -634,93 +639,125 @@ async function sendAudioMessage(url) {
 // ===== Realtime Messages =====
 function initRealtimeMessages() {
   if (!currentUser) return;
-  if (messageChannel) { supabase.removeChannel(messageChannel); messageChannel = null; }
+  if (messageChannel) {
+    supabase.removeChannel(messageChannel);
+    messageChannel = null;
+  }
 
   messageChannel = supabase
     .channel(`messages-global-monitor`)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async (payload) => {
-        const newMsg = payload.new;
-        
-        if (newMsg.room_id.startsWith("pv_") || newMsg.room_id.startsWith("group_")) {
-            triggerLoadChatHistory(); 
-        }
+      const newMsg = payload.new;
 
-        if (newMsg.room_id === currentRoomId) {
-          if (document.getElementById(`msg-${newMsg.id}`)) return;
-          
-          const senderProfile = await getCachedProfile(newMsg.user_id);
-          newMsg.profiles = {
-              username: senderProfile?.username || "User",
-              avatar_url: senderProfile?.avatar_url || "asets/png/profile.png",
-              role: senderProfile?.role || "user"
-          };
+      // 1. REFRESH SIDEBAR JIKA ADA PESAN MASUK
+      if (newMsg.room_id.startsWith("pv_") || newMsg.room_id.startsWith("group_")) {
+        triggerLoadChatHistory();
+      }
 
-          if (newMsg.user_id === currentUser.id && !newMsg.is_system) {
-            const tempEl = document.querySelector(`[id^="msg-temp-"]`);
-            if (tempEl) tempEl.remove();
-            renderMessage(newMsg);
-          } else {
-            renderMessage(newMsg);
-            if (!newMsg.is_system) receiveSound.play().catch(() => {});
-            
-            if (newMsg.status !== "read" && !document.hidden && !newMsg.is_system) {
-                await supabase.from("messages").update({ status: "read" }).eq("id", newMsg.id);
+      // ==========================================
+      // 🔥 [LOGIKA BARU] DETEKSI SINYAL TELPON 🔥
+      // ==========================================
+      if (newMsg.is_system) {
+        // A. Deteksi Panggilan Masuk (Untuk Penerima)
+        if (newMsg.message.includes("📞 Memanggil")) {
+          if (newMsg.user_id !== currentUser.id) {
+            // Pastikan fungsi showIncomingCall sudah kamu buat di bagian bawah file
+            if (typeof showIncomingCall === "function") {
+              showIncomingCall(newMsg);
             }
           }
-          scrollToBottom();
         }
-      })
+
+        // B. Deteksi Panggilan Ditolak (Untuk Penelepon)
+        if (newMsg.message.includes("🚫 Panggilan Ditolak")) {
+          if (newMsg.user_id !== currentUser.id) {
+            if (typeof window.endCall === "function") window.endCall();
+            showToast("Panggilan ditolak oleh lawan bicara.");
+          }
+        }
+      }
+      // ==========================================
+
+      // 2. LOGIKA RENDER PESAN KE UI CHAT
+      if (newMsg.room_id === currentRoomId) {
+        if (document.getElementById(`msg-${newMsg.id}`)) return;
+
+        const senderProfile = await getCachedProfile(newMsg.user_id);
+        newMsg.profiles = {
+          username: senderProfile?.username || "User",
+          avatar_url: senderProfile?.avatar_url || "asets/png/profile.png",
+          role: senderProfile?.role || "user"
+        };
+
+        if (newMsg.user_id === currentUser.id && !newMsg.is_system) {
+          const tempEl = document.querySelector(`[id^="msg-temp-"]`);
+          if (tempEl) tempEl.remove();
+          renderMessage(newMsg);
+        } else {
+          renderMessage(newMsg);
+          if (!newMsg.is_system) receiveSound.play().catch(() => {});
+
+          if (newMsg.status !== "read" && !document.hidden && !newMsg.is_system) {
+            await supabase.from("messages").update({ status: "read" }).eq("id", newMsg.id);
+          }
+        }
+        scrollToBottom();
+      }
+    })
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, (payload) => {
-        const updated = payload.new;
-        const old = payload.old; 
+      const updated = payload.new;
+      const old = payload.old;
 
-        if (updated.status !== old?.status && Object.keys(updated).length <= 5) {
-             if (updated.user_id === currentUser.id) {
-                updateMessageStatusUI(updated.id, updated.status || "sent");
-             }
-             return; 
+      // Logika Update Status (Read/Delivered)
+      if (updated.status !== old?.status && Object.keys(updated).length <= 5) {
+        if (updated.user_id === currentUser.id) {
+          updateMessageStatusUI(updated.id, updated.status || "sent");
         }
+        return;
+      }
 
-        if (updated.room_id !== currentRoomId) return;
+      if (updated.room_id !== currentRoomId) return;
 
-        if (updated.message === "Pesan ini telah dihapus") {
-          const msgEl = document.getElementById(`msg-${updated.id}`);
-          if (msgEl) {
-            const textEl = msgEl.querySelector(".text");
-            if (textEl) {
-              textEl.innerHTML = "<i>Pesan ini telah dihapus</i>";
-              textEl.style.color = "#aaa";
-              textEl.querySelectorAll("img, .vn-custom-player").forEach(m => m.remove());
-            }
-          }
-          return;
-        }
-        
-        if (updated.reactions) {
-          const msgEl = document.getElementById(`msg-${updated.id}`);
-          if (msgEl) {
-            const contentEl = msgEl.querySelector(".content");
-            const reactions = updated.reactions || {};
-            const reactionIcons = Object.values(reactions);
-            const uniqueIcons = [...new Set(reactionIcons)].slice(0, 3);
-            const reactionsHtml = uniqueIcons.length > 0 ? `${uniqueIcons.join("")} ${reactionIcons.length > 1 ? `<span style="font-size:9px; color:#999; margin-left:2px;">${reactionIcons.length}</span>` : ""}` : "";
-            
-            let badgeEl = contentEl.querySelector(".message-reactions");
-            if (reactionsHtml) {
-              if (!badgeEl) {
-                  badgeEl = document.createElement("div");
-                  badgeEl.className = "message-reactions";
-                  contentEl.insertBefore(badgeEl, contentEl.querySelector(".message-info"));
-              }
-              badgeEl.innerHTML = reactionsHtml;
-              contentEl.style.marginBottom = "15px";
-            } else if (badgeEl) {
-                badgeEl.remove();
-                contentEl.style.marginBottom = "5px";
-            }
+      // Logika Hapus Pesan
+      if (updated.message === "Pesan ini telah dihapus") {
+        const msgEl = document.getElementById(`msg-${updated.id}`);
+        if (msgEl) {
+          const textEl = msgEl.querySelector(".text");
+          if (textEl) {
+            textEl.innerHTML = "<i>Pesan ini telah dihapus</i>";
+            textEl.style.color = "#aaa";
+            textEl.querySelectorAll("img, .vn-custom-player").forEach(m => m.remove());
           }
         }
-      }).subscribe();
+        return;
+      }
+
+      // Logika Reactions
+      if (updated.reactions) {
+        const msgEl = document.getElementById(`msg-${updated.id}`);
+        if (msgEl) {
+          const contentEl = msgEl.querySelector(".content");
+          const reactions = updated.reactions || {};
+          const reactionIcons = Object.values(reactions);
+          const uniqueIcons = [...new Set(reactionIcons)].slice(0, 3);
+          const reactionsHtml = uniqueIcons.length > 0 ? `${uniqueIcons.join("")} ${reactionIcons.length > 1 ? `<span style="font-size:9px; color:#999; margin-left:2px;">${reactionIcons.length}</span>` : ""}` : "";
+
+          let badgeEl = contentEl.querySelector(".message-reactions");
+          if (reactionsHtml) {
+            if (!badgeEl) {
+              badgeEl = document.createElement("div");
+              badgeEl.className = "message-reactions";
+              contentEl.insertBefore(badgeEl, contentEl.querySelector(".message-info"));
+            }
+            badgeEl.innerHTML = reactionsHtml;
+            contentEl.style.marginBottom = "15px";
+          } else if (badgeEl) {
+            badgeEl.remove();
+            contentEl.style.marginBottom = "5px";
+          }
+        }
+      }
+    }).subscribe();
 }
 
 if (hamburger) {
@@ -766,6 +803,10 @@ globalBtn.onclick = async () => {
     
     if (btnOpenInvite) btnOpenInvite.style.display = 'none';
     
+    // Sembunyikan tombol telpon (Hapus duplikatnya)
+    const btnCall = document.getElementById('btn-start-call');
+    if (btnCall) btnCall.style.display = 'none';
+    
     const headerTitle = document.querySelector(".chat-header h3");
     if (headerTitle) headerTitle.textContent = "HopeTalk Globe";
     
@@ -774,6 +815,7 @@ globalBtn.onclick = async () => {
     await loadMessages(); 
     closeSidebar();
 };
+
   container.appendChild(globalBtn);
 }
 
@@ -886,6 +928,15 @@ async function bukaChatPribadi(partnerId, partnerName, partnerShortId = "") {
 
   const btnInvite = document.getElementById('btn-open-invite');
   if (btnInvite) btnInvite.style.display = 'none';
+
+  // ✅ PASTIKAN ID NYA btn-start-call SESUAI HTML
+  const btnCall = document.getElementById('btn-start-call'); 
+  if (btnCall) {
+    btnCall.style.setProperty('display', 'flex', 'important'); // Paksa muncul
+    btnCall.dataset.targetId = partnerId;
+    btnCall.dataset.targetName = partnerName;
+    btnCall.onclick = () => window.startLiveKitCall();
+  }
 
   const ids = [currentUser.id, partnerId].sort();
   currentRoomId = `pv_${ids[0]}_${ids[1]}`; 
@@ -1265,13 +1316,18 @@ function mulaiChatGrup(groupId, groupName) {
     window.activeGroupId = groupId;
     currentRoomId = `group_${groupId}`; 
 
+    // 1. SEMBUNYIKAN TOMBOL TELPON (Cukup panggil sekali saja)
+    const btnCall = document.getElementById('btn-start-call');
+    if (btnCall) {
+        btnCall.style.display = 'none';
+    }
+
     const btnInvite = document.getElementById('btn-open-invite');
     if (btnInvite) btnInvite.style.display = 'flex'; 
 
-    // [NEW FITUR] Nambahin ikon gear di header kalau buka grup!
+    // 2. LOGIKA HEADER & IKON GEAR
     const headerTitle = document.querySelector('.chat-header h3');
     if (headerTitle) {
-      // SVG Kustom bergaya Frosted Glass/Geometris (Bukan ikon biasa)
       const customIcon = `
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" 
              style="vertical-align: middle; cursor: pointer; margin-left: 8px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)); transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);" 
@@ -1286,14 +1342,13 @@ function mulaiChatGrup(groupId, groupName) {
           <path d="M12 6V8M12 16V18M6 12H8M16 12H18M8 8L9.5 9.5M14.5 14.5L16 16M8 16L9.5 14.5M14.5 9.5L16 8" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
         </svg>
       `;
-      
       headerTitle.innerHTML = `${escapeHtml(groupName)} ${customIcon}`;
     }
-
     
     const statusHeader = document.getElementById('status-header');
     if (statusHeader) statusHeader.innerText = "Grup Chat Terbuka";
 
+    // 3. RESET TAMPILAN PESAN
     document.getElementById('chat-messages').innerHTML = ''; 
     if (window.innerWidth <= 768) closeSidebar();
 
@@ -1590,7 +1645,160 @@ window.updateGroupInfo = async () => {
     } catch(err) { showToast("Gagal update grup"); } 
     finally { if(btn) { btn.innerText = "Simpan Perubahan"; btn.disabled = false; } }
 };
+window.startLiveKitCall = async () => {
+    const btn = document.getElementById('btn-start-call');
+    const partnerId = btn.dataset.targetId;
+    const partnerName = btn.dataset.targetName;
+    if (!partnerId) return;
 
+    // Tampilkan UI Penelepon
+    const overlay = document.getElementById('call-overlay');
+    const statusEl = document.getElementById('call-status');
+    const nameEl = document.getElementById('call-name');
+    const avatarEl = document.getElementById('call-avatar');
+
+    if (overlay) overlay.style.display = 'flex';
+    if (nameEl) nameEl.innerText = partnerName;
+    if (statusEl) statusEl.innerText = "MEMANGGIL...";
+
+    // Ambil foto profil dari cache untuk dipasang di overlay
+    const profile = await getCachedProfile(partnerId);
+    if (profile && avatarEl) {
+        avatarEl.src = profile.avatar_url || 'asets/png/profile.png';
+    }
+
+    try {
+        // 🔥 MULAI KONEK LIVEKIT (Pake Room ID chat pribadi kalian)
+        await connectToCall(currentRoomId);
+
+        // Kirim Sinyal ke Lawan lewat Supabase
+        await supabase.from('messages').insert([{
+            room_id: currentRoomId,
+            message: `📞 Memanggil ${partnerName}...`,
+            user_id: currentUser.id,
+            is_system: true
+        }]);
+
+        if (statusEl) statusEl.innerText = "ON CALL";
+        
+        // Kasih efek getar pas nyambung
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+    } catch (err) {
+        console.error("Panggilan Gagal:", err);
+        showToast("Gagal menyambung audio.");
+        window.endCall();
+    }
+};
+
+window.endCall = () => {
+    // 🔥 PUTUS KONEKSI LIVEKIT
+    if (callRoom) {
+        callRoom.disconnect();
+        callRoom = null;
+    }
+    
+    const callOverlay = document.getElementById('call-overlay');
+    if (callOverlay) callOverlay.style.display = 'none';
+
+    const incomingOverlay = document.getElementById('incoming-call-overlay');
+    if (incomingOverlay) incomingOverlay.style.display = 'none';
+    
+    showToast("Panggilan berakhir");
+};
+
+let callSignalData = null;
+
+// Tampilkan Pop-up buat Penerima
+window.showIncomingCall = function(msgData) {
+    callSignalData = msgData; // Simpan data buat dipake pas angkat
+    const overlay = document.getElementById('incoming-call-overlay');
+    const nameEl = document.getElementById('incoming-name');
+    
+    if (overlay) overlay.style.display = 'flex';
+    if (nameEl) nameEl.innerText = msgData.username || "Teman";
+    
+    // Bunyi ringtone (opsional)
+    // receiveSound.play(); 
+};
+
+// AKSI: Lawan bicara mencet ANGKAT
+window.answerCall = async () => {
+    const incomingOverlay = document.getElementById('incoming-call-overlay');
+    if (incomingOverlay) incomingOverlay.style.display = 'none';
+
+    const callOverlay = document.getElementById('call-overlay');
+    if (callOverlay) callOverlay.style.display = 'flex';
+
+    const callStatus = document.getElementById('call-status');
+    if (callStatus) callStatus.innerText = "CONNECTING...";
+
+    // 🔥 MASUK KE ROOM LIVEKIT YANG SAMA
+    if (callSignalData) {
+        await connectToCall(callSignalData.room_id);
+        if (callStatus) callStatus.innerText = "ON CALL";
+    }
+};
+
+// AKSI: Lawan bicara mencet TOLAK
+window.rejectCall = async () => {
+    const incomingOverlay = document.getElementById('incoming-call-overlay');
+    if (incomingOverlay) incomingOverlay.style.display = 'none';
+    
+    if (callSignalData) {
+        // Kirim sinyal balik ke Supabase kalau telpon ditolak
+        await supabase.from('messages').insert([{
+            room_id: callSignalData.room_id,
+            message: `🚫 Panggilan Ditolak`,
+            user_id: currentUser.id,
+            is_system: true
+        }]);
+        callSignalData = null;
+    }
+};
+
+async function connectToCall(roomName) {
+    try {
+        // 1. Minta Token (Pake Supabase Function yang sama kayak di voice.js)
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/get-livekit-token`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'apikey': SUPABASE_ANON_KEY, 
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}` 
+            },
+            body: JSON.stringify({ username: myUsername, identity: currentUser.id, roomName: roomName })
+        });
+        
+        const data = await response.json();
+
+        // 2. Inisialisasi Room
+        callRoom = new LivekitClient.Room({ adaptiveStream: true, dynacast: true });
+
+        // 3. Listener: Supaya bisa denger suara lawan
+        callRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
+            if (track.kind === "audio") {
+                const element = track.attach();
+                document.body.appendChild(element);
+                element.play().catch(() => {});
+            }
+        });
+
+        // 4. Connect! (Gunakan URL server LiveKit kamu)
+        const LIVEKIT_URL = "wss://voicegrup-zxmeibkn.livekit.cloud"; 
+        await callRoom.connect(LIVEKIT_URL, data.token);
+
+        // 5. Aktifkan Mic Otomatis
+        await callRoom.localParticipant.setMicrophoneEnabled(true);
+        
+        console.log("✅ Berhasil masuk ke room telpon:", roomName);
+
+    } catch (e) {
+        console.error("Gagal koneksi LiveKit:", e.message);
+        showToast("Gagal terhubung ke server panggilan.");
+        window.endCall();
+    }
+}
 
 async function init() {
   try {

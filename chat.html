@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,14 +13,15 @@
   <link rel="icon" type="asets/png/book.png" href="asets/png/book.png">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 </head>
+
 <body>
 
-<audio id="send-sound" src="asets/sound/send.mp3" preload="auto"></audio>
-<audio id="receive-sound" src="asets/sound/receive.mp3" preload="auto"></audio>
+  <audio id="send-sound" src="asets/sound/send.mp3" preload="auto"></audio>
+  <audio id="receive-sound" src="asets/sound/receive.mp3" preload="auto"></audio>
 
   <div class="telegram-chat">
     <div class="chat-header" style="position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; background: #3a7bd5; color: white; height: 65px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); overflow: visible;">
-      
+
       <div style="display: flex; align-items: center; gap: 12px; flex: 1; overflow: hidden;">
         <div class="hamburger-btn" id="menu-btn" style="cursor: pointer; flex-shrink: 0;">
           <div class="hamburger-line"></div>
@@ -41,27 +43,29 @@
         </button>
       </div>
 
-      <div style="flex-shrink: 0; margin-left: 10px;">
-        <img src="asets/png/music.png" class="logo-besar-header" alt="Logo" style="height: 32px; width: auto; object-fit: contain;">
-      </div>
+<div style="flex-shrink: 0; margin-left: 10px; display: flex; align-items: center; gap: 15px;">
+  <div id="btn-start-call" style="cursor: pointer; display: none; color: white; display: flex; align-items: center;">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l2.19-2.19a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+    </svg>
+  </div>
+  
+  <img src="asets/png/music.png" class="logo-besar-header" alt="Logo">
+</div>
 
     </div>
 
     <div id="sidebar" class="sidebar">
       <div style="padding: 30px 20px; background: #3a7bd5; color: white; display: flex; flex-direction: column; align-items: center; gap: 8px;">
         <img id="side-avatar" src="asets/png/profile.png" style="width: 75px; height: 75px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.3); object-fit: cover; background: #eee;">
-
         <div style="text-align: center;">
           <div id="side-username" style="font-weight: 600; font-size: 16px; margin-bottom: 2px;">Loading...</div>
-
           <div onclick="navigator.clipboard.writeText(document.getElementById('my-unique-id').innerText); alert('ID Unik disalin!')" style="font-size: 10px; background: rgba(0,0,0,0.2); padding: 2px 10px; border-radius: 12px; cursor: pointer; display: inline-block; margin-bottom: 5px;">
             ID UNIK: <span id="my-unique-id" style="font-weight: 700;">#-----</span>
           </div>
-
           <div onclick="window.openEditProfile()" style="font-size: 11px; color: #fff; cursor: pointer; margin-top: 5px; background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; display: flex; align-items: center; gap: 5px; justify-content: center; border: 1px solid rgba(255,255,255,0.3); font-weight: 600;">
             Edit Biodata
           </div>
-
           <div style="font-size: 10px; opacity: 0.8; display: block; margin-top: 8px;">
             <span class="online-dot" style="width:6px; height:6px; margin-right:3px;"></span> Online
           </div>
@@ -77,7 +81,7 @@
           CARI & CHAT
         </button>
       </div>
-      
+
       <div style="padding: 10px 15px; border-bottom: 1px solid #eee;">
         <button id="btn-open-group-modal" style="width: 100%; border: 2px dashed #3a7bd5; background: #f0f7ff; color: #3a7bd5; border-radius: 12px; padding: 10px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
           BUAT GRUP BARU
@@ -120,12 +124,18 @@
 
         <label style="font-size: 11px; font-weight: 600;">Zodiak</label>
         <select id="in-zodiak" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; margin-bottom: 15px;">
-          <option value="Aries">Aries</option><option value="Taurus">Taurus</option>
-          <option value="Gemini">Gemini</option><option value="Cancer">Cancer</option>
-          <option value="Leo">Leo</option><option value="Virgo">Virgo</option>
-          <option value="Libra">Libra</option><option value="Scorpio">Scorpio</option>
-          <option value="Sagitarius">Sagitarius</option><option value="Capricorn">Capricorn</option>
-          <option value="Aquarius">Aquarius</option><option value="Pisces">Pisces</option>
+          <option value="Aries">Aries</option>
+          <option value="Taurus">Taurus</option>
+          <option value="Gemini">Gemini</option>
+          <option value="Cancer">Cancer</option>
+          <option value="Leo">Leo</option>
+          <option value="Virgo">Virgo</option>
+          <option value="Libra">Libra</option>
+          <option value="Scorpio">Scorpio</option>
+          <option value="Sagitarius">Sagitarius</option>
+          <option value="Capricorn">Capricorn</option>
+          <option value="Aquarius">Aquarius</option>
+          <option value="Pisces">Pisces</option>
         </select>
 
         <label style="font-size: 11px; font-weight: 600;">Hobi</label>
@@ -142,11 +152,11 @@
         </div>
       </div>
     </div>
-    
+
     <div id="group-modal" class="delete-overlay" style="display: none; align-items: center; justify-content: center;">
       <div class="delete-menu" style="width: 90%; max-width: 350px; padding: 25px; text-align: center;">
         <h2 style="margin: 0 0 10px 0; font-size: 18px; color: #3a7bd5;">Buat Grup Baru</h2>
-        
+
         <div style="margin-bottom: 20px; position: relative; display: inline-block;">
           <label for="group-photo-input" style="cursor: pointer;">
             <img id="group-photo-preview" src="asets/png/profile.png" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #3a7bd5; background: #eee;">
@@ -168,14 +178,14 @@
         </div>
       </div>
     </div>
-    
+
     <div id="group-settings-modal" class="modal-overlay" style="display:none; z-index:99999;">
       <div class="modal-content" style="background:#fff; width:90%; max-width:350px; border-radius:15px; padding:20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">
           <h3 style="margin:0; font-size:16px; color:#333;">Pengaturan Grup</h3>
           <span onclick="document.getElementById('group-settings-modal').style.display='none'" style="cursor:pointer; font-size:20px; color:#999;">&times;</span>
         </div>
-        
+
         <div style="text-align: center; margin-bottom: 20px;">
           <label for="edit-group-photo-input" style="cursor: pointer; display: inline-block; position: relative;">
             <img id="edit-group-photo-preview" src="asets/png/profile.png" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #3a7bd5; background: #eee;">
@@ -195,7 +205,7 @@
         <div>
           <label style="font-size:11px; color:#888; font-weight:bold; display:block; margin-bottom:5px;">Daftar Anggota</label>
           <div id="member-list-container" style="max-height:200px; overflow-y:auto; border:1px solid #eee; border-radius:8px; padding:5px 10px;">
-            </div>
+          </div>
         </div>
 
         <button onclick="window.leaveGroup()" style="width:100%; background:#fff; color:#ff4757; border:1px solid #ff4757; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer; margin-top:20px;">Keluar dari Grup</button>
@@ -225,28 +235,28 @@
       </div>
       <div id="sticker-list" style="display:flex; flex-wrap:wrap; overflow-y:auto; flex:1; justify-content:center; gap:5px;"></div>
     </div>
-    
+
     <div id="reply-preview-box" style="display:none; width:100%; position: relative;"></div>
 
     <div class="chat-input-container" style="display: flex; align-items: flex-end; gap: 10px; padding: 12px; background: #f4f7fa; width: 100%; box-sizing: border-box; border-top: 1px solid rgba(0,0,0,0.05);">
-      
+
       <div class="input-group-wrapper" style="flex: 1; display: flex; align-items: center; background: white; border-radius: 28px; padding: 6px 14px; position: relative; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.05); min-height: 52px; box-sizing: border-box;">
-        
+
         <button id="sticker-btn" style="background: none; border: none; cursor: pointer; padding: 0; margin-right: 10px; flex-shrink: 0; transition: transform 0.2s ease;">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="16" r="14" fill="url(#clay_sticker_grad)" stroke="#2D74C4" stroke-width="1.5"/>
-            <path d="M11 15C11 15 12 13 16 13C20 13 21 15 21 15" stroke="#2D74C4" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="12" cy="18" r="1.5" fill="#2D74C4"/>
-            <circle cx="20" cy="18" r="1.5" fill="#2D74C4"/>
+            <circle cx="16" cy="16" r="14" fill="url(#clay_sticker_grad)" stroke="#2D74C4" stroke-width="1.5" />
+            <path d="M11 15C11 15 12 13 16 13C20 13 21 15 21 15" stroke="#2D74C4" stroke-width="2" stroke-linecap="round" />
+            <circle cx="12" cy="18" r="1.5" fill="#2D74C4" />
+            <circle cx="20" cy="18" r="1.5" fill="#2D74C4" />
             <defs>
               <linearGradient id="clay_sticker_grad" x1="16" y1="2" x2="16" y2="30" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#E1EFFF"/>
-                <stop offset="1" stop-color="#A2C9FF"/>
+                <stop stop-color="#E1EFFF" />
+                <stop offset="1" stop-color="#A2C9FF" />
               </linearGradient>
             </defs>
           </svg>
         </button>
-        
+
         <textarea id="chat-input" placeholder="Tulis sesuatu..." rows="1" style="flex: 1; border: none; outline: none; background: transparent; resize: none; max-height: 120px; padding: 12px 0; font-family: 'Poppins', sans-serif; font-size: 15px; color: #333;"></textarea>
 
         <div id="vn-overlay" style="display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: white; border-radius: 28px; align-items: center; padding: 0 15px; box-sizing: border-box; z-index: 10;">
@@ -262,32 +272,31 @@
         <div class="icon-stack" style="display: flex; align-items: center; justify-content: center;">
           <span class="svg-send" style="position: absolute; display: flex;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </span>
           <span class="svg-mic" style="position: absolute; display: none;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <rect x="9" y="2" width="6" height="11" rx="3" fill="white"/>
-              <path d="M5 10V11C5 14.866 8.13401 18 12 18C15.866 18 19 14.866 19 11V10" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-              <line x1="12" y1="18" x2="12" y2="22" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+              <rect x="9" y="2" width="6" height="11" rx="3" fill="white" />
+              <path d="M5 10V11C5 14.866 8.13401 18 12 18C15.866 18 19 14.866 19 11V10" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+              <line x1="12" y1="18" x2="12" y2="22" stroke="white" stroke-width="2.5" stroke-linecap="round" />
             </svg>
           </span>
         </div>
       </button>
 
     </div>
+  </div>
 
-
-
-<div id="delete-overlay" class="delete-overlay">
-  <div class="delete-menu">
-    <p>Hapus pesan ini?</p>
-    <div class="delete-menu-btns">
-      <button id="confirm-delete">Hapus</button>
-      <button class="btn-cancel" onclick="document.getElementById('delete-overlay').style.display='none'">Batal</button>
+  <div id="delete-overlay" class="delete-overlay">
+    <div class="delete-menu">
+      <p>Hapus pesan ini?</p>
+      <div class="delete-menu-btns">
+        <button id="confirm-delete">Hapus</button>
+        <button class="btn-cancel" onclick="document.getElementById('delete-overlay').style.display='none'">Batal</button>
+      </div>
     </div>
   </div>
-</div>
 
   <div id="doi-card-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center; padding:20px;">
     <div class="doi-card" style="background:#fff; width:100%; max-width:340px; border-radius:24px; overflow:hidden; position:relative;">
@@ -322,16 +331,60 @@
     </div>
   </div>
 
-<div id="reaction-menu" class="reaction-menu">
-  <span class="reaction-emoji" onclick="sendReaction('👍')">👍</span>
-  <span class="reaction-emoji" onclick="sendReaction('❤️')">❤️</span>
-  <span class="reaction-emoji" onclick="sendReaction('😂')">😂</span>
-  <span class="reaction-emoji" onclick="sendReaction('😮')">😮</span>
-  <span class="reaction-emoji" onclick="sendReaction('😢')">😢</span>
-  <span class="reaction-emoji" onclick="sendReaction('🙏')">🙏</span>
+  <div id="reaction-menu" class="reaction-menu">
+    <span class="reaction-emoji" onclick="sendReaction('👍')">👍</span>
+    <span class="reaction-emoji" onclick="sendReaction('❤️')">❤️</span>
+    <span class="reaction-emoji" onclick="sendReaction('😂')">😂</span>
+    <span class="reaction-emoji" onclick="sendReaction('😮')">😮</span>
+    <span class="reaction-emoji" onclick="sendReaction('😢')">😢</span>
+    <span class="reaction-emoji" onclick="sendReaction('🙏')">🙏</span>
+  </div>
+
+  <div id="call-overlay" style="display:none; position:fixed; inset:0; background:rgba(18, 24, 34, 0.98); z-index:99999; flex-direction:column; align-items:center; justify-content:center; color:white; font-family: 'Poppins', sans-serif;">
+    <div class="call-animation" style="position:relative; margin-bottom:20px;">
+      <img id="call-avatar" src="asets/png/profile.png" style="width:120px; height:120px; border-radius:50%; border:3px solid #3a7bd5; object-fit: cover;">
+      <div class="sonar-wave" style="position:absolute; inset:0; border-radius:50%; background:#3a7bd5; opacity:0.3; z-index:-1; animation: sonar 2s infinite;"></div>
+    </div>
+    <h2 id="call-name" style="margin:0; font-size:22px;">Username</h2>
+    <p id="call-status" style="margin:10px 0 30px 0; opacity:0.7; letter-spacing:1px;">MEMANGGIL...</p>
+
+    <div style="display:flex; gap:30px;">
+      <button id="btn-end-call" onclick="window.endCall()" style="background:#ff4757; color:white; border:none; width:65px; height:65px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
+          <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" transform="rotate(135 12 12)" />
+        </svg>
+      </button>
+    </div>
+  </div>
+<div id="incoming-call-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:100000; flex-direction:column; align-items:center; justify-content:center; color:white; font-family: 'Poppins', sans-serif;">
+    <div class="call-animation" style="margin-bottom:20px;">
+        <img id="incoming-avatar" src="asets/png/profile.png" style="width:120px; height:120px; border-radius:50%; border:3px solid #2ecc71; object-fit: cover;">
+    </div>
+    <h2 id="incoming-name" style="margin:0;">Teman kamu</h2>
+    <p style="opacity:0.7; margin:10px 0 40px 0;">MENGHUBUNGI...</p>
+    
+    <div style="display:flex; gap:50px;">
+        <div onclick="window.rejectCall()" style="cursor:pointer; text-align:center;">
+            <div style="background:#ff4757; width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:10px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" transform="rotate(135 12 12)"/></svg>
+            </div>
+            <span style="font-size:12px;">TOLAK</span>
+        </div>
+
+        <div onclick="window.answerCall()" style="cursor:pointer; text-align:center;">
+            <div style="background:#2ecc71; width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:10px; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4); animation: pulse 1.5s infinite;">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.24l-2.2 2.2c-2.83-1.44-5.14-3.76-6.59-6.59l2.2-2.2c.28-.28.36-.67.25-1.02C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1z"/></svg>
+            </div>
+            <span style="font-size:12px;">ANGKAT</span>
+        </div>
+    </div>
 </div>
 
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+
   <script type="module" src="js/chat.js"></script>
 </body>
 </html>

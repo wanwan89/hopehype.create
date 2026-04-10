@@ -221,15 +221,19 @@ body {
 }
 
 .logo-besar-header {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 75px !important;
-  height: 75px !important;
+  position: relative !important; /* Biar sejajar sama tombol telpon */
+  right: auto !important;
+  top: auto !important;
+  transform: none !important;
+  
+  /* Ukuran Baru - Lebih Besar */
+  height: 50px !important; 
+  width: auto !important;
+  
   object-fit: contain;
-  z-index: 10;
   filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.2));
+  flex-shrink: 0; 
+  margin-left: 5px; /* Jeda tipis biar nggak nempel banget ke tombol */
 }
 
 /* --- Sidebar & Hamburger --- */
@@ -903,3 +907,31 @@ body {
         top: 0px;
         box-shadow: 0 2px 0 #2D5DA3, 0 3px 6px rgba(0,0,0,0.2);
       }
+
+/* Animasi Gelombang Sonar */
+.sonar-wave {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: 50%;
+    background: #3a7bd5;
+    opacity: 0.3;
+    z-index: -1;
+    animation: sonar-effect 2s infinite;
+}
+@keyframes sonar-effect {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+#btn-end-call:active { transform: scale(0.9); }
+#btn-call-trigger {
+    display: none; /* Default sembunyi */
+    align-items: center;
+    justify-content: center;
+    z-index: 1001; /* Di atas elemen header lainnya */
+}
+
+/* Opsional: Efek klik biar user tau tombol kepencet */
+#btn-call-trigger:active {
+    transform: scale(0.9);
+    background: rgba(255, 255, 255, 0.3);
+}

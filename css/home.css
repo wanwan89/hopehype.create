@@ -2245,3 +2245,76 @@ body.dark .ad-banner-container {
     position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
     padding: 0 5px; box-sizing: border-box;
 }
+/* ========================================= */
+/* CSS UNTUK CONTACT US & SOSIAL MEDIA       */
+/* ========================================= */
+
+/* Wadah utama ditaruh di pojok kiri bawah */
+.contact-wrapper {
+  position: fixed;
+  bottom: 2px; /* Sudah mentok bawah */
+  left: 12px;
+  z-index: 999;
+  display: flex;
+  align-items: center; 
+  gap: 12px;
+}
+
+/* Gaya untuk tombol teks "Contact us" */
+.contact-text {
+  background-color: #ffffff;
+  color: #007BFF; /* <-- Berubah jadi warna Biru */
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 2px 4px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  /* Mencegah teks ter-highlight biru saat diklik cepat di HP */
+  user-select: none; 
+  -webkit-user-select: none;
+}
+
+/* Teks memberikan efek membal saat ditekan/diklik */
+.contact-text:active {
+  transform: scale(0.95);
+}
+
+/* Wadah ikon sosial media, AWALNYA DISEMBUNYIKAN */
+.social-icons-container {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  opacity: 0; 
+  transform: translateX(-20px); 
+  pointer-events: none; 
+  transition: all 0.4s ease-out; 
+}
+
+/* KUNCI UTAMA: Saat tombol diklik (checkbox aktif), ikon MUNCUL */
+#contact-toggle:checked ~ .social-icons-container {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* Opsional: Tombol "Contact us" berubah warna jadi biru saat sedang terbuka */
+#contact-toggle:checked ~ .contact-text {
+  background-color: #007BFF; /* <-- Berubah jadi warna Biru */
+  color: #ffffff;
+}
+
+/* Gaya dasar untuk ikon-ikonnya */
+.social-icon {
+  width: 24px; 
+  height: 24px;
+  object-fit: contain;
+  filter: drop-shadow(1px 2px 4px rgba(0, 0, 0, 0.3));
+  transition: transform 0.2s ease-in-out;
+}
+
+/* Ikon membesar saat disentuh/mau diklik */
+.social-icon:hover {
+  transform: scale(1.2);
+}

@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Welcome to HopeHype</title>
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,6 +66,18 @@
     /* Password Toggle Icon */
     .toggle-pass { cursor: pointer; color: var(--gray); transition: 0.2s; display: flex; align-items: center; }
     .toggle-pass:hover { color: var(--primary); }
+
+    /* Lupa Password Link */
+    .forgot-pass { 
+      font-size: 11.5px; 
+      color: var(--primary); 
+      text-decoration: none; 
+      font-weight: 700; 
+      text-align: right; 
+      margin-top: -2px; 
+      transition: 0.2s; 
+    }
+    .forgot-pass:hover { text-decoration: underline; color: #008be5; }
 
     /* Role & Category Selector */
     .role-select { appearance: none; background: transparent; border: none; width: 100%; font-size: 14px; color: #111827; cursor: pointer; font-family: 'Outfit', sans-serif;}
@@ -153,6 +167,7 @@
           <svg id="eyeIcon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
         </div>
       </div>
+      <a href="#" id="forgotPassLink" class="forgot-pass">Lupa Password?</a>
     </div>
 
     <div class="flex-column" id="captchaArea" style="align-items:center; margin-top: 5px;">
@@ -190,12 +205,15 @@
       passInput.type = isPass ? "text" : "password";
     };
 
-    // Fungsi Toggle Login/Register yang lebih stabil (tanpa arguments.callee)
+    // Fungsi Toggle Login/Register
     function toggleAuthMode() {
       isSignUpMode = !isSignUpMode;
       document.getElementById("usernameArea").style.display = isSignUpMode ? "flex" : "none";
       document.getElementById("roleArea").style.display = isSignUpMode ? "flex" : "none";
       document.getElementById("termsArea").style.display = isSignUpMode ? "flex" : "none";
+      
+      // Sembunyikan tulisan Lupa Password kalau lagi daftar
+      document.getElementById("forgotPassLink").style.display = isSignUpMode ? "none" : "block";
       
       document.getElementById("subTitle").textContent = isSignUpMode ? "Bikin akun buat pamer karya lo" : "Login dulu buat lanjut cari hype";
       document.getElementById("submitBtn").textContent = isSignUpMode ? "Daftar Akun" : "Masuk Sekarang";
@@ -220,6 +238,47 @@
       creatorArea.style.display = (isSignUpMode && roleSelect.value === "creator") ? "flex" : "none";
     }
     roleSelect.onchange = handleRoleChange;
+
+    // FUNGSI LUPA PASSWORD
+    document.getElementById("forgotPassLink").onclick = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value.trim();
+
+      // Cek apakah user udah isi email atau belum
+      if (!email) {
+        if (typeof toast === "function") {
+          toast("Info", "Ketik email lo dulu di kolom atas, baru klik Lupa Password.");
+        } else {
+          alert("Ketik email lo dulu di kolom Email!");
+        }
+        document.getElementById("email").focus();
+        return;
+      }
+
+      // Ambil token captcha (Supabase butuh ini buat keamanan reset pass)
+      const captchaToken = document.querySelector('[name="cf-turnstile-response"]')?.value;
+      const submitBtn = document.getElementById("submitBtn");
+      
+      submitBtn.textContent = "Mengirim link...";
+      
+      // Kirim permintaan reset password ke Supabase
+      const { error } = await client.auth.resetPasswordForEmail(email, {
+        captchaToken: captchaToken,
+        redirectTo: window.location.origin + "/reset-password.html" // Ingat buat halaman ini nanti!
+      });
+
+      submitBtn.textContent = "Masuk Sekarang";
+
+      if (error) {
+        if (typeof toast === "function") toast("Gagal", error.message);
+        else alert("Gagal: " + error.message);
+        if (typeof turnstile !== 'undefined') turnstile.reset();
+      } else {
+        if (typeof toast === "function") toast("Berhasil!", "Cek email lo sekarang buat reset password.");
+        else alert("Berhasil! Cek email buat reset password.");
+        if (typeof turnstile !== 'undefined') turnstile.reset();
+      }
+    };
 
     // FORM SUBMIT
     document.getElementById("mainForm").onsubmit = async (e) => {

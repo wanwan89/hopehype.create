@@ -155,7 +155,7 @@
       </div>
     </div>
 
-    <div class="flex-column" id="captchaArea" style="display:none; align-items:center; margin-top: 5px;">
+    <div class="flex-column" id="captchaArea" style="align-items:center; margin-top: 5px;">
       <div class="cf-turnstile" data-sitekey="0x4AAAAAAC8RAExeHvAJu5Xt" data-theme="light"></div>
     </div>
 
@@ -190,24 +190,28 @@
       passInput.type = isPass ? "text" : "password";
     };
 
-    // Handler Switch Login/Register
-    document.getElementById("switchMode").onclick = function() {
+    // Fungsi Toggle Login/Register yang lebih stabil (tanpa arguments.callee)
+    function toggleAuthMode() {
       isSignUpMode = !isSignUpMode;
       document.getElementById("usernameArea").style.display = isSignUpMode ? "flex" : "none";
       document.getElementById("roleArea").style.display = isSignUpMode ? "flex" : "none";
       document.getElementById("termsArea").style.display = isSignUpMode ? "flex" : "none";
       
-      // Munculkan CAPTCHA hanya saat Sign Up
-      document.getElementById("captchaArea").style.display = isSignUpMode ? "flex" : "none";
-      
       document.getElementById("subTitle").textContent = isSignUpMode ? "Bikin akun buat pamer karya lo" : "Login dulu buat lanjut cari hype";
       document.getElementById("submitBtn").textContent = isSignUpMode ? "Daftar Akun" : "Masuk Sekarang";
       document.getElementById("footerText").innerHTML = isSignUpMode ? "Udah punya akun? <span class='span' id='switchMode'>Login</span>" : "Belum ada akun? <span class='span' id='switchMode'>Daftar</span>";
       
-      // Re-attach click event
-      document.getElementById("switchMode").onclick = arguments.callee;
+      // Re-attach event listener ke elemen baru
+      document.getElementById("switchMode").onclick = toggleAuthMode;
+      
       handleRoleChange();
-    };
+
+      // Reset Turnstile setiap ganti mode agar dapat token baru
+      if (typeof turnstile !== 'undefined') turnstile.reset();
+    }
+    
+    // Inisialisasi klik pertama
+    document.getElementById("switchMode").onclick = toggleAuthMode;
 
     const roleSelect = document.getElementById("userRole");
     const creatorArea = document.getElementById("creatorCategoryArea");
@@ -224,28 +228,47 @@
       const password = passInput.value;
       const submitBtn = document.getElementById("submitBtn");
 
+      // Ambil token dari widget Turnstile
+      const captchaToken = document.querySelector('[name="cf-turnstile-response"]')?.value;
+
+      // Pakai alert sebagai backup kalau file toast.js gagal jalan
+      if (!captchaToken) {
+        if (typeof toast === "function") {
+            return toast("Keamanan", "Tunggu CAPTCHA loading dulu bro!");
+        } else {
+            return alert("Selesaikan verifikasi CAPTCHA dulu!");
+        }
+      }
+
       if (!isSignUpMode) {
-        // LOGIN PROCESS
+        // --- LOGIN PROCESS ---
         submitBtn.textContent = "Loading...";
-        const { error } = await client.auth.signInWithPassword({ email, password });
+        const { error } = await client.auth.signInWithPassword({ 
+          email, 
+          password,
+          options: { captchaToken: captchaToken }
+        });
+        
         submitBtn.textContent = "Masuk Sekarang";
         
-        if (error) toast("Akses Gagal", error.message);
-        else window.location.href = "index.html";
+        if (error) {
+          if (typeof toast === "function") toast("Akses Gagal", error.message);
+          else alert("Gagal Login: " + error.message);
+          
+          if (typeof turnstile !== 'undefined') turnstile.reset();
+        } else {
+          window.location.href = "index.html";
+        }
         
       } else {
-        // SIGN UP PROCESS
+        // --- SIGN UP PROCESS ---
         const username = document.getElementById("username").value;
         const role = roleSelect.value;
         const type = document.getElementById("creatorType").value;
         const agreed = document.getElementById("checkTerms").checked;
-        
-        // Ambil token dari widget Turnstile
-        const captchaToken = document.querySelector('[name="cf-turnstile-response"]')?.value;
 
-        if (!username) return toast("Info", "Isi username lo dulu");
-        if (!agreed) return toast("Legal", "Ceklis aturan main kita dulu bro");
-        if (!captchaToken) return toast("Keamanan", "Selesaikan CAPTCHA dulu bro!");
+        if (!username) return typeof toast === "function" ? toast("Info", "Isi username lo dulu") : alert("Isi username!");
+        if (!agreed) return typeof toast === "function" ? toast("Legal", "Ceklis aturan main kita dulu bro") : alert("Ceklis syaratnya!");
 
         submitBtn.textContent = "Loading...";
 
@@ -255,7 +278,7 @@
         const { error } = await client.auth.signUp({
           email, password,
           options: { 
-            captchaToken: captchaToken, // Kirim token ke Supabase
+            captchaToken: captchaToken, 
             data: { username, avatar_url: avatar, role: finalRole } 
           }
         });
@@ -263,12 +286,16 @@
         submitBtn.textContent = "Daftar Akun";
 
         if (error) {
-          toast("Gagal Daftar", error.message);
-          // Reset CAPTCHA kalau gagal biar bisa coba lagi
+          if (typeof toast === "function") toast("Gagal Daftar", error.message);
+          else alert("Gagal Daftar: " + error.message);
+
           if (typeof turnstile !== 'undefined') turnstile.reset();
         } else {
-          toast("Berhasil!", "Akun lo udah jadi. Cek email buat aktivasi!");
+          if (typeof toast === "function") toast("Berhasil!", "Akun lo udah jadi. Cek email buat aktivasi!");
+          else alert("Berhasil daftar! Cek email kamu.");
+          
           document.getElementById("mainForm").reset();
+          if (typeof turnstile !== 'undefined') turnstile.reset();
         }
       }
     };
@@ -276,7 +303,7 @@
     document.getElementById("googleBtn").onclick = async () => {
       await client.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin + "/index.html" } // Sedikit fix path redirect
+        options: { redirectTo: window.location.origin + "/index.html" }
       });
     };
   </script>

@@ -95,11 +95,13 @@
         </div>
       </div>
 
-      <div style="padding: 10px 0; border-top: 1px solid #eee; background: #fff; text-align: center;">
-        <button class="cta" id="btn-sidebar-search" onclick="window.mulaiCariDoi()" style="background: #3a7bd5; color: white; border: none; border-radius: 20px; padding: 10px 20px; font-weight: bold; font-size: 12px; cursor: pointer;">
-          CARI DOI
+      <div style="padding: 15px 20px; border-top: 1px solid #f0f0f0; background: #fff; text-align: center;">
+        <button class="cta" id="btn-sidebar-search" onclick="window.mulaiCariDoi()" style="width: 100%; background: linear-gradient(135deg, #ff416c, #ff4b2b); color: white; border: none; border-radius: 25px; padding: 14px 20px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(255, 75, 43, 0.35); transition: transform 0.2s; letter-spacing: 0.5px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          CARI DOI SEKARANG
         </button>
       </div>
+
     </div>
 
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
@@ -239,45 +241,39 @@
 
     <div id="reply-preview-box" style="display:none; width:100%; position: relative;"></div>
 
-    <div class="chat-input-container" style="display: flex; align-items: flex-end; gap: 10px; padding: 12px; background: #f4f7fa; width: 100%; box-sizing: border-box; border-top: 1px solid rgba(0,0,0,0.05);">
+    <div class="chat-input-container" style="display: flex; align-items: flex-end; gap: 10px; padding: 10px 15px; background: #ffffff; width: 100%; box-sizing: border-box; border-top: 1px solid #eaeaea;">
 
-      <div class="input-group-wrapper" style="flex: 1; display: flex; align-items: center; background: white; border-radius: 28px; padding: 6px 14px; position: relative; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.05); min-height: 52px; box-sizing: border-box;">
+      <div class="input-group-wrapper" style="flex: 1; display: flex; align-items: center; background: #f4f5f7; border-radius: 30px; padding: 4px 16px; position: relative; min-height: 48px; box-sizing: border-box; border: 1px solid #e0e0e0;">
 
-        <button id="sticker-btn" style="background: none; border: none; cursor: pointer; padding: 0; margin-right: 10px; flex-shrink: 0; transition: transform 0.2s ease;">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="16" r="14" fill="url(#clay_sticker_grad)" stroke="#2D74C4" stroke-width="1.5" />
-            <path d="M11 15C11 15 12 13 16 13C20 13 21 15 21 15" stroke="#2D74C4" stroke-width="2" stroke-linecap="round" />
-            <circle cx="12" cy="18" r="1.5" fill="#2D74C4" />
-            <circle cx="20" cy="18" r="1.5" fill="#2D74C4" />
-            <defs>
-              <linearGradient id="clay_sticker_grad" x1="16" y1="2" x2="16" y2="30" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#E1EFFF" />
-                <stop offset="1" stop-color="#A2C9FF" />
-              </linearGradient>
-            </defs>
+        <button id="sticker-btn" style="background: none; border: none; cursor: pointer; padding: 0; margin-right: 10px; flex-shrink: 0; display: flex; align-items: center; outline: none;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+            <line x1="15" y1="9" x2="15.01" y2="9"></line>
           </svg>
         </button>
 
-        <textarea id="chat-input" placeholder="Tulis sesuatu..." rows="1" style="flex: 1; border: none; outline: none; background: transparent; resize: none; max-height: 120px; padding: 12px 0; font-family: 'Poppins', sans-serif; font-size: 15px; color: #333;"></textarea>
+        <textarea id="chat-input" placeholder="Tulis pesan..." rows="1" style="flex: 1; border: none; outline: none; background: transparent !important; resize: none; max-height: 100px; padding: 12px 0; font-family: 'Poppins', sans-serif; font-size: 14px; color: #333; line-height: 1.4; -webkit-appearance: none; box-shadow: none;"></textarea>
 
-        <div id="vn-overlay" style="display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: white; border-radius: 28px; align-items: center; padding: 0 15px; box-sizing: border-box; z-index: 10;">
+        <div id="vn-overlay" style="display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #f4f5f7; border-radius: 30px; align-items: center; padding: 0 16px; box-sizing: border-box; z-index: 10;">
           <div style="display: flex; align-items: center; width: 100%; gap: 12px;">
             <div style="width: 10px; height: 10px; background: #ff4757; border-radius: 50%; animation: pulse 1s infinite;"></div>
             <span id="vn-timer" style="font-weight: 600; font-size: 14px; color: #333;">00:00</span>
-            <span style="color: #aaa; font-size: 12px; margin-left: auto;">&laquo; Geser batal</span>
+            <span style="color: #888; font-size: 12px; margin-left: auto; font-style: italic;">&laquo; Geser batal</span>
           </div>
         </div>
       </div>
 
-      <button id="action-btn" style="width: 52px; height: 52px; border-radius: 20px; background: #3a7bd5; border: none; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 0 #2D5DA3, 0 8px 15px rgba(0,0,0,0.15); transition: all 0.1s active; position: relative; top: -3px;">
+      <button id="action-btn" style="width: 48px; height: 48px; border-radius: 50%; background: #3a7bd5; border: none; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(58, 123, 213, 0.3); outline: none;">
         <div class="icon-stack" style="display: flex; align-items: center; justify-content: center;">
           <span class="svg-send" style="position: absolute; display: flex;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </span>
           <span class="svg-mic" style="position: absolute; display: none;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <rect x="9" y="2" width="6" height="11" rx="3" fill="white" />
               <path d="M5 10V11C5 14.866 8.13401 18 12 18C15.866 18 19 14.866 19 11V10" stroke="white" stroke-width="2.5" stroke-linecap="round" />
               <line x1="12" y1="18" x2="12" y2="22" stroke="white" stroke-width="2.5" stroke-linecap="round" />
@@ -287,7 +283,6 @@
       </button>
 
     </div>
-  </div>
 
   <div id="delete-overlay" class="delete-overlay">
     <div class="delete-menu">

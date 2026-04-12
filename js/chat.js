@@ -1752,12 +1752,12 @@ window.startLiveKitCall = async () => {
 
     } catch (err) {
         console.error("Panggilan Gagal:", err);
-        showToast("Gagal menyambung audio.");
-        window.endCall();
+        showToast("Gagal menyambung panggilan.");
+        window.endCall(true); // Tambahkan 'true' di dalam kurung ini ya
     }
 };
 
-window.endCall = () => {
+window.endCall = (isSilent = false) => {
     stopRingtone(); 
     clearTimeout(callRingingTimeout);
     stopCallTimer();
@@ -1771,23 +1771,31 @@ window.endCall = () => {
         statusEl.style.color = ""; // Reset warna
     }
 
+    // 🔥 CEK APAKAH LAYAR TELEPON MASIH TERBUKA (Cegah Spam) 🔥
+    const callOverlay = document.getElementById('call-overlay');
+    const incomingOverlay = document.getElementById('incoming-call-overlay');
+    let isOverlayOpen = (callOverlay && callOverlay.style.display !== 'none') || 
+                        (incomingOverlay && incomingOverlay.style.display !== 'none');
+
+    // Putuskan sambungan LiveKit
     if (callRoom) {
         callRoom.disconnect();
         callRoom = null;
     }
     
-    const callOverlay = document.getElementById('call-overlay');
+    // Tutup layar
     if (callOverlay) callOverlay.style.display = 'none';
-
-    const incomingOverlay = document.getElementById('incoming-call-overlay');
     if (incomingOverlay) incomingOverlay.style.display = 'none';
     
-    if (callSeconds > 0) {
-        const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
-        const s = String(callSeconds % 60).padStart(2, '0');
-        showToast(`Panggilan berakhir (${m}:${s})`);
-    } else {
-        showToast("Panggilan berakhir");
+    // 🔥 MUNCULKAN NOTIF HANYA JIKA TIDAK SILENT & LAYAR SEBELUMNYA AKTIF 🔥
+    if (isOverlayOpen && !isSilent) {
+        if (callSeconds > 0) {
+            const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+            const s = String(callSeconds % 60).padStart(2, '0');
+            showToast(`Panggilan berakhir (${m}:${s})`);
+        } else {
+            showToast("Panggilan berakhir");
+        }
     }
 };
 

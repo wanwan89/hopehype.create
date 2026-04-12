@@ -4,7 +4,14 @@
   <meta charset="UTF-8">
   <title>Welcome to HopeHype</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  
   <link rel="stylesheet" href="toast.css">
   <script src="toast.js"></script>
 
@@ -21,7 +28,7 @@
     
     body {
       margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center;
-      background-color: #ffffff; font-family: 'Poppins', sans-serif; padding: 20px;
+      background-color: #ffffff; font-family: 'Outfit', sans-serif; padding: 20px;
     }
 
     .form {
@@ -47,7 +54,7 @@
       padding: 0 16px; background: var(--bg-input); transition: 0.2s; position: relative;
     }
 
-    .input { border: none; width: 100%; height: 100%; background: transparent; color: #111827; font-size: 14px; margin-left: 10px; }
+    .input { border: none; width: 100%; height: 100%; background: transparent; color: #111827; font-size: 14px; margin-left: 10px; font-family: 'Outfit', sans-serif; }
     .inputForm:focus-within { 
       border-color: var(--primary); 
       background: #ffffff; 
@@ -59,7 +66,7 @@
     .toggle-pass:hover { color: var(--primary); }
 
     /* Role & Category Selector */
-    .role-select { appearance: none; background: transparent; border: none; width: 100%; font-size: 14px; color: #111827; cursor: pointer; }
+    .role-select { appearance: none; background: transparent; border: none; width: 100%; font-size: 14px; color: #111827; cursor: pointer; font-family: 'Outfit', sans-serif;}
     
     #creatorCategoryArea { display: none; animation: slideDown 0.3s ease-out; }
     @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
@@ -72,7 +79,7 @@
 
     .button-submit {
       margin-top: 10px; background: var(--dark); border: none; color: white; font-size: 14px;
-      font-weight: 700; border-radius: 16px; height: 52px; width: 100%; cursor: pointer; transition: 0.2s;
+      font-weight: 700; border-radius: 16px; height: 52px; width: 100%; cursor: pointer; transition: 0.2s; font-family: 'Outfit', sans-serif;
     }
     .button-submit:hover { background: #000; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
 
@@ -86,7 +93,7 @@
 
     .btn-google {
       width: 100%; height: 50px; border-radius: 16px; display: flex; justify-content: center; align-items: center;
-      font-weight: 600; font-size: 14px; gap: 10px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; transition: 0.2s;
+      font-weight: 600; font-size: 14px; gap: 10px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; transition: 0.2s; font-family: 'Outfit', sans-serif;
     }
     .btn-google:hover { background: #f9fafb; border-color: #d1d5db; }
   </style>
@@ -148,6 +155,10 @@
       </div>
     </div>
 
+    <div class="flex-column" id="captchaArea" style="display:none; align-items:center; margin-top: 5px;">
+      <div class="cf-turnstile" data-sitekey="0x4AAAAAAC8RAExeHvAJu5Xt" data-theme="light"></div>
+    </div>
+
     <div class="terms-area" id="termsArea" style="display:none;">
       <input type="checkbox" id="checkTerms">
       <label for="checkTerms">saya setuju <a href="temp.html" target="_blank">Syarat dan ketentuan</a> HopeHype.</label>
@@ -186,6 +197,9 @@
       document.getElementById("roleArea").style.display = isSignUpMode ? "flex" : "none";
       document.getElementById("termsArea").style.display = isSignUpMode ? "flex" : "none";
       
+      // Munculkan CAPTCHA hanya saat Sign Up
+      document.getElementById("captchaArea").style.display = isSignUpMode ? "flex" : "none";
+      
       document.getElementById("subTitle").textContent = isSignUpMode ? "Bikin akun buat pamer karya lo" : "Login dulu buat lanjut cari hype";
       document.getElementById("submitBtn").textContent = isSignUpMode ? "Daftar Akun" : "Masuk Sekarang";
       document.getElementById("footerText").innerHTML = isSignUpMode ? "Udah punya akun? <span class='span' id='switchMode'>Login</span>" : "Belum ada akun? <span class='span' id='switchMode'>Daftar</span>";
@@ -208,21 +222,32 @@
       e.preventDefault();
       const email = document.getElementById("email").value;
       const password = passInput.value;
+      const submitBtn = document.getElementById("submitBtn");
 
       if (!isSignUpMode) {
         // LOGIN PROCESS
+        submitBtn.textContent = "Loading...";
         const { error } = await client.auth.signInWithPassword({ email, password });
+        submitBtn.textContent = "Masuk Sekarang";
+        
         if (error) toast("Akses Gagal", error.message);
         else window.location.href = "index.html";
+        
       } else {
         // SIGN UP PROCESS
         const username = document.getElementById("username").value;
         const role = roleSelect.value;
         const type = document.getElementById("creatorType").value;
         const agreed = document.getElementById("checkTerms").checked;
+        
+        // Ambil token dari widget Turnstile
+        const captchaToken = document.querySelector('[name="cf-turnstile-response"]')?.value;
 
         if (!username) return toast("Info", "Isi username lo dulu");
         if (!agreed) return toast("Legal", "Ceklis aturan main kita dulu bro");
+        if (!captchaToken) return toast("Keamanan", "Selesaikan CAPTCHA dulu bro!");
+
+        submitBtn.textContent = "Loading...";
 
         let finalRole = (role === 'creator') ? `creator_${type}` : 'user';
         const avatar = `https://api.dicebear.com/7.x/initials/svg?seed=${username}`;
@@ -230,19 +255,28 @@
         const { error } = await client.auth.signUp({
           email, password,
           options: { 
+            captchaToken: captchaToken, // Kirim token ke Supabase
             data: { username, avatar_url: avatar, role: finalRole } 
           }
         });
 
-        if (error) toast("Gagal Daftar", error.message);
-        else toast("Berhasil!", "Akun lo udah jadi. Cek email buat aktivasi!");
+        submitBtn.textContent = "Daftar Akun";
+
+        if (error) {
+          toast("Gagal Daftar", error.message);
+          // Reset CAPTCHA kalau gagal biar bisa coba lagi
+          if (typeof turnstile !== 'undefined') turnstile.reset();
+        } else {
+          toast("Berhasil!", "Akun lo udah jadi. Cek email buat aktivasi!");
+          document.getElementById("mainForm").reset();
+        }
       }
     };
 
     document.getElementById("googleBtn").onclick = async () => {
       await client.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin + "index.html" }
+        options: { redirectTo: window.location.origin + "/index.html" } // Sedikit fix path redirect
       });
     };
   </script>

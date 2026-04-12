@@ -280,16 +280,24 @@ async function requireLogin() {
 // ===== [FULL FIX EGRESS] Presence / Typing =====
 async function initPresence() {
   if (!currentUser) return;
+
+  // 🔥 RESET STATUS TYPING SAAT PINDAH ROOM 🔥
+  clearTimeout(typingTimeout);
+  isCurrentlyTyping = false;
+  const typingHeader = document.getElementById("typing-header");
+  const statusHeader = document.getElementById("status-header");
+  if (typingHeader) typingHeader.style.display = "none";
+  if (statusHeader) statusHeader.style.display = "inline-block";
   
   if (presenceChannel) { await supabase.removeChannel(presenceChannel); presenceChannel = null; }
   presenceChannel = supabase.channel(`presence-${currentRoomId}`, { config: { presence: { key: currentUser.id } } });
 
   presenceChannel.on("presence", { event: "sync" }, () => {
     const state = presenceChannel.presenceState();
-    const typingHeader = document.getElementById("typing-header");
-    const statusHeader = document.getElementById("status-header");
+    const currentTypingHeader = document.getElementById("typing-header");
+    const currentStatusHeader = document.getElementById("status-header");
 
-    if (!typingHeader || !statusHeader) return;
+    if (!currentTypingHeader || !currentStatusHeader) return;
     const typingUsers = [];
 
     for (const userId in state) {
@@ -299,12 +307,12 @@ async function initPresence() {
     }
 
     if (typingUsers.length > 0) {
-      statusHeader.style.display = "none";
-      typingHeader.style.display = "inline";
-      typingHeader.textContent = `${typingUsers[0]} sedang mengetik...`;
+      currentStatusHeader.style.display = "none";
+      currentTypingHeader.style.display = "inline-block"; // Perbaikan UI
+      currentTypingHeader.textContent = `${typingUsers[0]} sedang mengetik...`;
     } else {
-      statusHeader.style.display = "inline";
-      typingHeader.style.display = "none";
+      currentStatusHeader.style.display = "inline-block"; // Perbaikan UI
+      currentTypingHeader.style.display = "none";
     }
   });
 
@@ -719,13 +727,13 @@ function initRealtimeMessages() {
       const updated = payload.new;
       const old = payload.old;
 
-      // Logika Update Status (Read/Delivered)
-      if (updated.status !== old?.status && Object.keys(updated).length <= 5) {
+      // Logika Update Status (Read/Delivered) - Hapus Object.keys biar ceklis update instan!
+      if (updated.status !== old?.status) {
         if (updated.user_id === currentUser.id) {
           updateMessageStatusUI(updated.id, updated.status || "sent");
         }
-        return;
       }
+
 
       if (updated.room_id !== currentRoomId) return;
 
@@ -1786,13 +1794,23 @@ window.endCall = () => {
 let callSignalData = null;
 
 // Tampilkan Pop-up buat Penerima
-window.showIncomingCall = function(msgData) {
+// Tampilkan Pop-up buat Penerima
+window.showIncomingCall = async function(msgData) {
     callSignalData = msgData; // Simpan data buat dipake pas angkat
     const overlay = document.getElementById('incoming-call-overlay');
     const nameEl = document.getElementById('incoming-name');
+    const avatarEl = document.getElementById('incoming-avatar'); // Pastikan ID img-nya "incoming-avatar" di HTML kamu
     
     if (overlay) overlay.style.display = 'flex';
     if (nameEl) nameEl.innerText = msgData.username || "Teman";
+
+    // 🔥 TARIK FOTO PROFIL PENELPON 🔥
+    if (msgData.user_id && avatarEl) {
+        const profile = await getCachedProfile(msgData.user_id);
+        if (profile) {
+            avatarEl.src = profile.avatar_url || 'asets/png/profile.png';
+        }
+    }
 
     // 🔥 MAINKAN NADA DERING 🔥
     ringtoneSound.play().catch(e => console.log("Browser blokir autoplay:", e));
@@ -1810,6 +1828,15 @@ window.answerCall = async () => {
 
     const callStatus = document.getElementById('call-status');
     if (callStatus) callStatus.innerText = "CONNECTING...";
+
+    // 🔥 PINDAHKAN FOTO KE LAYAR CALL 🔥
+    const callAvatar = document.getElementById('call-avatar');
+    if (callAvatar && callSignalData?.user_id) {
+        const profile = await getCachedProfile(callSignalData.user_id);
+        if (profile) {
+            callAvatar.src = profile.avatar_url || 'asets/png/profile.png';
+        }
+    }
 
     if (callSignalData) {
         await connectToCall(callSignalData.room_id);
@@ -1857,6 +1884,16 @@ async function connectToCall(roomName) {
                 document.body.appendChild(element);
                 element.play().catch(() => {});
             }
+        });
+        // 🔥 DETEKSI KALAU LAWAN MEMATIKAN TELEPON 🔥
+        callRoom.on(LivekitClient.RoomEvent.ParticipantDisconnected, (participant) => {
+            showToast("Panggilan diakhiri oleh lawan bicara.");
+            window.endCall();
+        });
+
+        // 🔥 DETEKSI KALAU ROOM DITUTUP 🔥
+        callRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
+            window.endCall();
         });
 
         // 🔥 DETEKSI KALAU LAWAN UDAH MASUK ROOM 🔥

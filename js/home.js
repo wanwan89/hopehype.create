@@ -583,18 +583,33 @@ document.getElementById("logoutBtn")?.addEventListener("click", async () => {
 });
 
 // =======================
-// INIT APP
+// INIT APP (OPTIMIZED WITH SKELETON)
 // =======================
 const initApp = async () => {
+  const skeleton = document.getElementById('skeleton-screen');
+  const mainContent = document.querySelector('.container');
+
   try {
-    await updateAuthMenu();
-    await loadUser();
-    await loadUnreadNotifications();
-    await loadUnreadChats();
-    await subscribeNotifications(); 
-    await checkPopup();
+    // Jalankan semua proses secara PARALEL (Barengan) biar hemat waktu
+    await Promise.all([
+      updateAuthMenu(),
+      loadUser(),
+      loadUnreadNotifications(),
+      loadUnreadChats(),
+      subscribeNotifications(),
+      checkPopup()
+    ]);
   } catch (err) {
     console.error("initApp error:", err);
+  } finally {
+    // Matikan skeleton dan munculkan konten utama
+    if (skeleton) skeleton.style.display = 'none';
+    if (mainContent) {
+      mainContent.style.display = 'block';
+      // Pastikan loader spinner lama (jika ada) juga hilang
+      const oldLoader = document.querySelector('.loader');
+      if (oldLoader) oldLoader.style.display = 'none';
+    }
   }
 };
 

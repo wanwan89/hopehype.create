@@ -6,8 +6,6 @@
     <title>HelloHope-web</title>
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#1DB954" />
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
     <link rel="icon" type="image/png" href="asets/png/book.png" />
 
     <script
@@ -53,7 +51,35 @@
     </script>
 
   </head>
-  <body>
+<body>
+<div id="skeleton-screen" class="skeleton-wrapper">
+  <div class="skeleton-main-card-ui">
+    
+    <div class="skel-header">
+      <div style="display: flex; align-items: center;">
+        <div class="skel-avatar shim"></div>
+        <div class="skel-username shim"></div>
+      </div>
+      <div style="width: 30px; height: 30px; border-radius: 50%;" class="shim"></div>
+    </div>
+
+    <div class="skel-grid">
+      <div class="skel-main-card shim"></div>
+      <div class="skel-main-card shim"></div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; gap: 10px;">
+      <div style="width: 100px; height: 34px; border-radius: 12px;" class="shim"></div>
+      <div style="width: 80px; height: 34px; border-radius: 12px;" class="shim"></div>
+    </div>
+
+    <div class="skel-bar shim"></div>
+    <div class="skel-bar shim"></div>
+
+  </div>
+</div>
+
+
 <div class="ad-banner-container">
   <div class="ad-slider">
     <img src="asets/gif/iklan1.gif" alt="Iklan PRO" class="ad-slide">
@@ -71,7 +97,8 @@
 
     <div class="grid-bg"></div>
 
-    <div class="container">
+<div class="container" style="display: none;">
+
       <header>
         <div class="hello-wrapper">
           <div class="hello-text">

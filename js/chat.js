@@ -1103,23 +1103,52 @@ const btnCariDoiActual = document.getElementById("btn-sidebar-search");
 if (btnCariDoiActual) {
   btnCariDoiActual.onclick = async () => {
     const myProfile = await getCachedProfile(currentUser.id); 
-    if (!myProfile?.gender) { showToast("Setel GENDER kamu dulu di Edit Biodata!"); window.openEditProfile(); return; }
+    if (!myProfile?.gender) { 
+      showToast("Setel GENDER kamu dulu di Edit Biodata!"); 
+      window.openEditProfile(); 
+      return; 
+    }
     
     closeSidebar();
+
+    // 1. TAMPILKAN LAYAR ANIMASI RADAR (TANPA IKON)
     const loadingOverlay = document.createElement("div"); 
-    loadingOverlay.className = "searching-overlay"; 
-    loadingOverlay.innerHTML = `<div class="radar"></div><div class="searching-text">MENCARI PASANGAN...</div><div style="font-size:10px; margin-top:10px; opacity:0.6;">Menghubungkan ke server HopeTalk...</div>`; 
+    loadingOverlay.className = "doi-search-overlay"; 
+    loadingOverlay.id = "active-search-overlay";
+    loadingOverlay.innerHTML = `
+      <div class="radar-container">
+        <div class="radar-wave"></div>
+        <div class="radar-wave"></div>
+        <div class="radar-wave"></div>
+      </div>
+      <div style="text-align: center;">
+        <h3 class="search-title-glow">MENCARI DOI...</h3>
+        <p class="search-subtitle-glow">Memindai area sekitarmu</p>
+      </div>
+    `; 
     document.body.appendChild(loadingOverlay);
     
     const lawanJenis = myProfile.gender === "Pria" ? "Wanita" : "Pria";
     
+    // 2. PROSES PENCARIAN
     setTimeout(async () => {
       const { data: users } = await supabase.from("profiles").select("*").neq("id", currentUser.id).eq("gender", lawanJenis);
-      loadingOverlay.remove();
-      if (!users || users.length === 0) { showToast(`Waduh, belum ada ${lawanJenis} yang tersedia.`); return; }
+      
+      // Hapus layar animasi setelah selesai
+      const overlayToRemove = document.getElementById("active-search-overlay");
+      if (overlayToRemove) overlayToRemove.remove();
+
+      if (!users || users.length === 0) { 
+        showToast(`Waduh, belum ada ${lawanJenis} yang tersedia.`); 
+        return; 
+      }
+      
+      // Munculkan Kartu Doi
       tampilkanDoiCard(users[Math.floor(Math.random() * users.length)]);
-      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-    }, 2500);
+      
+      // HP bergetar tanda Doi berhasil ditemukan!
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]); 
+    }, 3000); 
   };
 }
 

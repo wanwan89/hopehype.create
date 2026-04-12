@@ -1130,7 +1130,10 @@ if (btnCariDoiActual) {
     
     const lawanJenis = myProfile.gender === "Pria" ? "Wanita" : "Pria";
     
-    // 2. PROSES PENCARIAN
+    // 🔥 TRIK BIAR MAKIN REALISTIS: Waktu tunggu diacak antara 4 sampai 7 detik
+    const waktuTungguAcak = Math.floor(Math.random() * 3000) + 4000; 
+    
+    // 2. PROSES PENCARIAN (Menunggu sesuai waktu acak)
     setTimeout(async () => {
       const { data: users } = await supabase.from("profiles").select("*").neq("id", currentUser.id).eq("gender", lawanJenis);
       
@@ -1148,7 +1151,7 @@ if (btnCariDoiActual) {
       
       // HP bergetar tanda Doi berhasil ditemukan!
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]); 
-    }, 3000); 
+    }, waktuTungguAcak); // <--- Sekarang pakai waktu yang diacak tadi
   };
 }
 

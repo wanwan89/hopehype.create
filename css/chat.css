@@ -935,12 +935,12 @@ body {
   letter-spacing: 2px;
 }
 /* =========================================
-   ANIMASI CARI DOI (RADAR CINTA)
+   ANIMASI CARI DOI (RADAR CINTA TEMA BIRU)
    ========================================= */
 .doi-search-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 20, 30, 0.95); /* Warna background gelap modern */
+  background: rgba(15, 20, 30, 0.95);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   z-index: 100000;
@@ -962,37 +962,28 @@ body {
   margin-bottom: 30px;
 }
 
-/* Gelombang Radar yang Memancar */
+/* Gelombang Radar Tema Biru */
 .radar-wave {
   position: absolute;
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 2px solid #ff4b2b;
+  border: 2px solid #00d2ff; /* Berubah jadi biru muda */
   opacity: 0;
   animation: rippleWave 2s cubic-bezier(0.21, 0.53, 0.56, 0.8) infinite;
-  box-shadow: 0 0 20px rgba(255, 75, 43, 0.5) inset;
+  box-shadow: 0 0 20px rgba(0, 210, 255, 0.5) inset; /* Berubah jadi bayangan biru */
 }
 
-/* Delay agar gelombang muncul berurutan */
 .radar-wave:nth-child(2) { animation-delay: 0.6s; }
 .radar-wave:nth-child(3) { animation-delay: 1.2s; }
 
-/* Emoji Hati yang Berdetak */
-.radar-heart {
-  font-size: 50px;
-  z-index: 10;
-  animation: heartBeat 1s infinite;
-  filter: drop-shadow(0 0 15px rgba(255, 75, 43, 0.8));
-}
-
-/* Teks MENCARI DOI yang Menyala */
+/* Teks Menyala Tema Biru */
 .search-title-glow {
   margin: 0;
   font-size: 22px;
   font-weight: 800;
   letter-spacing: 2px;
-  background: linear-gradient(135deg, #ff416c, #ff4b2b);
+  background: linear-gradient(135deg, #3a7bd5, #00d2ff); /* Gradasi biru khas HopeTalk */
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: textPulse 1.5s infinite alternate;
@@ -1005,7 +996,6 @@ body {
   letter-spacing: 1px;
 }
 
-/* Kumpulan Keyframes (Gerakan Animasi) */
 @keyframes fadeInOverlay {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -1014,14 +1004,7 @@ body {
   0% { transform: scale(0.2); opacity: 1; border-width: 4px; }
   100% { transform: scale(2.5); opacity: 0; border-width: 0px; }
 }
-@keyframes heartBeat {
-  0%, 100% { transform: scale(1); }
-  15% { transform: scale(1.2); }
-  30% { transform: scale(1); }
-  45% { transform: scale(1.2); }
-}
 @keyframes textPulse {
-  0% { opacity: 0.6; filter: drop-shadow(0 0 5px rgba(255, 75, 43, 0.3)); }
-  100% { opacity: 1; filter: drop-shadow(0 0 15px rgba(255, 75, 43, 0.8)); }
+  0% { opacity: 0.6; filter: drop-shadow(0 0 5px rgba(0, 210, 255, 0.3)); }
+  100% { opacity: 1; filter: drop-shadow(0 0 15px rgba(0, 210, 255, 0.8)); } /* Glow biru menyala */
 }
-

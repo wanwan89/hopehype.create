@@ -1834,21 +1834,21 @@ window.endCall = (isSilent = false) => {
 let callSignalData = null;
 
 // Tampilkan Pop-up buat Penerima
-// Tampilkan Pop-up buat Penerima
 window.showIncomingCall = async function(msgData) {
     callSignalData = msgData; // Simpan data buat dipake pas angkat
     const overlay = document.getElementById('incoming-call-overlay');
     const nameEl = document.getElementById('incoming-name');
-    const avatarEl = document.getElementById('incoming-avatar'); // Pastikan ID img-nya "incoming-avatar" di HTML kamu
+    const avatarEl = document.getElementById('incoming-avatar'); 
     
     if (overlay) overlay.style.display = 'flex';
-    if (nameEl) nameEl.innerText = msgData.username || "Teman";
+    if (nameEl) nameEl.innerText = "Memuat..."; // Teks sementara sebelum nama asli ditarik
 
-    // 🔥 TARIK FOTO PROFIL PENELPON 🔥
-    if (msgData.user_id && avatarEl) {
+    // 🔥 TARIK PROFIL PENELPON DARI DATABASE (NAMA & FOTO) 🔥
+    if (msgData.user_id) {
         const profile = await getCachedProfile(msgData.user_id);
         if (profile) {
-            avatarEl.src = profile.avatar_url || 'asets/png/profile.png';
+            if (avatarEl) avatarEl.src = profile.avatar_url || 'asets/png/profile.png';
+            if (nameEl) nameEl.innerText = profile.username || "Teman"; // Nama asli dimasukkan ke sini!
         }
     }
 
